@@ -13,6 +13,13 @@
 #include <boost/beast/websocket/ssl.hpp>
 #include <nlohmann/json.hpp>
 
+#include <iomanip>
+#include <sstream>
+#include <openssl/hmac.h>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 namespace deribit {
 namespace websocket {
 
@@ -44,7 +51,8 @@ public:
     void unsubscribeFromChannel(const std::string& channel);
 
     // Message Handling
-    void sendMessage(const std::string& message);
+    std::string sendMessage(const std::string& message);
+
     
     // Callback Registrations
     void setOnMessageCallback(std::function<void(const std::string&)> callback);
@@ -71,9 +79,10 @@ private:
     boost::asio::ssl::context ssl_context_;
     
     // Secure WebSocket Stream
-    std::unique_ptr<boost::beast::websocket::stream<
-        boost::asio::ssl::stream<boost::asio::ip::tcp::socket>
-    >> websocket_;
+    using SecureWebSocket = boost::beast::websocket::stream<
+        boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
+
+    std::unique_ptr<SecureWebSocket> websocket_;
 
     // Tracking and State Management
     std::vector<std::string> subscribed_channels_;

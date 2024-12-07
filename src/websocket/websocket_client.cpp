@@ -3,6 +3,12 @@
 #include <openssl/hmac.h>
 #include <iostream>
 #include <algorithm>
+#include <openssl/hmac.h>
+#include <iomanip>
+#include <sstream>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 namespace deribit {
 namespace websocket {
@@ -40,13 +46,12 @@ bool WebSocketClient::connect() {
         boost::asio::ip::tcp::resolver resolver(io_context_);
         auto endpoints = resolver.resolve(host_, port_);
 
-        // Create secure WebSocket
-        websocket_ = std::make_unique<boost::beast::websocket::stream<
-            boost::asio::ssl::stream<boost::asio::ip::tcp::socket>
-        >>(io_context_, ssl_context_);
+        // Create secure WebSocket using in-place construction
+        websocket_ = std::make_unique<SecureWebSocket>(io_context_, ssl_context_);
 
         // Connect to server
-        auto ep = boost::asio::connect(websocket_->next_layer().next_layer(), endpoints);
+        auto& socket = websocket_->next_layer().next_layer();
+        boost::asio::connect(socket, endpoints);
         
         // SSL Handshake
         websocket_->next_layer().handshake(boost::asio::ssl::stream_base::client);
@@ -86,15 +91,50 @@ bool WebSocketClient::connect() {
     }
 }
 
-void WebSocketClient::authenticate() {
-    // Generate authentication payload
+std::string WebSocketClient::generateSignature() {
+    // Get current timestamp in milliseconds
     auto timestamp = std::to_string(
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()
         ).count()
     );
 
-    // Prepare authentication request
+    // Construct the signature string
+    std::string signature_data = timestamp + "\n" + api_key_ + "\n" + "client_signature";
+
+    // Use OpenSSL HMAC to generate the signature
+    unsigned char hmac_digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_length;
+
+    HMAC(EVP_sha256(), 
+         secret_key_.c_str(), secret_key_.length(),
+         reinterpret_cast<const unsigned char*>(signature_data.c_str()), 
+         signature_data.length(),
+         hmac_digest, 
+         &digest_length);
+
+    // Convert HMAC digest to hex string
+    std::stringstream ss;
+    for (unsigned int i = 0; i < digest_length; i++) {
+        ss << std::hex << std::setw(2) << std::setfill('0') 
+           << static_cast<int>(hmac_digest[i]);
+    }
+
+    return ss.str();
+}
+
+void WebSocketClient::authenticate() {
+    // Generate timestamp and signature
+    auto timestamp = std::to_string(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count()
+    );
+
+    // Generate client signature
+    std::string signature = generateSignature();
+
+    // Prepare authentication payload
     nlohmann::json auth_payload = {
         {"jsonrpc", "2.0"},
         {"method", "public/auth"},
@@ -102,12 +142,26 @@ void WebSocketClient::authenticate() {
         {"params", {
             {"grant_type", "client_signature"},
             {"client_id", api_key_},
-            // Add other authentication parameters
+            {"timestamp", timestamp},
+            {"signature", signature},
+            {"nonce", boost::uuids::to_string(boost::uuids::random_generator()())},
+            {"data", ""}
         }}
     };
 
     // Send authentication message
-    sendMessage(auth_payload.dump());
+    std::string auth_message = auth_payload.dump();
+    std::cout << "Authentication Request: " << auth_message << std::endl;
+    
+    try {
+        std::string response = sendMessage(auth_message);
+        // Log or handle authentication response
+        std::cout << "Authentication Response: " << response << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Authentication Error: " << e.what() << std::endl;
+        throw;
+    }
 }
 
 void WebSocketClient::runIOContext() {
@@ -161,7 +215,7 @@ void WebSocketClient::startReading() {
     );
 }
 
-void WebSocketClient::handleRead(boost::beast::error_code ec, std::size_t bytes_transferred) {
+void WebSocketClient::handleRead(boost::beast::error_code ec, std::size_t /* bytes_transferred */) {
     if (ec) {
         std::cerr << "Read Error: " << ec.message() << std::endl;
         
@@ -187,7 +241,7 @@ void WebSocketClient::handleRead(boost::beast::error_code ec, std::size_t bytes_
     startReading();
 }
 
-void WebSocketClient::sendMessage(const std::string& message) {
+std::string WebSocketClient::sendMessage(const std::string& message) {
     try {
         if (!websocket_ || !websocket_->is_open()) {
             throw std::runtime_error("WebSocket is not connected");
@@ -200,17 +254,18 @@ void WebSocketClient::sendMessage(const std::string& message) {
             std::cerr << "Send Message Error: " << ec.message() << std::endl;
             throw std::runtime_error("Failed to send message");
         }
+
+        // Placeholder: Retrieve the response (implement response retrieval logic)
+        // std::string response = waitForResponse();
+        // return response;
+        return R"({"result": "success", "id": 1})";
     }
     catch (const std::exception& e) {
         std::cerr << "Send Message Exception: " << e.what() << std::endl;
-        
-        // Update connection state
-        {
-            std::lock_guard<std::mutex> lock(state_mutex_);
-            connection_state_ = ConnectionState::ERROR;
-        }
+        throw;
     }
 }
+
 
 void WebSocketClient::subscribeToChannel(const std::string& channel) {
     // Construct subscription request JSON
