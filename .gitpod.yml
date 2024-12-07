@@ -4,6 +4,16 @@ tasks:
     before: |
       sudo apt update
       sudo apt-get install -y tree
+            sudo apt-get install -y \
+        libboost-all-dev \
+        libssl-dev \
+        nlohmann-json3-dev \
+        cmake \
+        g++
+  - command: |
+      echo "Loading environment variables"
+      export DERIBIT_CLIENT_ID=${DERIBIT_CLIENT_ID}
+      export DERIBIT_CLIENT_SECRET=${DERIBIT_CLIENT_SECRET}
 
   # Task to set up dependencies
   - name: set-up
