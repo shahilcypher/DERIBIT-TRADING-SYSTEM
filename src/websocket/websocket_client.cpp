@@ -1,14 +1,7 @@
-// src/websocket/websocket_client.cpp
 #include "websocket/websocket_client.h"
-#include <openssl/hmac.h>
 #include <iostream>
-#include <algorithm>
-#include <openssl/hmac.h>
 #include <iomanip>
 #include <sstream>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 
 namespace deribit {
 namespace websocket {
@@ -35,12 +28,7 @@ WebSocketClient::~WebSocketClient() {
     disconnect();
 }
 
-WebSocketClient::ConnectionState WebSocketClient::getConnectionState() const {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-    return connection_state_;
-}
-
-bool WebSocketClient::connect() {
+bool WebSocketClient::connect(bool /* auto_reconnect */) {
     try {
         // Resolve endpoint
         boost::asio::ip::tcp::resolver resolver(io_context_);
@@ -59,8 +47,10 @@ bool WebSocketClient::connect() {
         // WebSocket Handshake
         websocket_->handshake(host_ + ":" + port_, "/ws/api/v2");
 
-        // Authenticate
-        authenticate();
+        // Authenticate if API key is provided
+        if (!api_key_.empty() && !secret_key_.empty()) {
+            authenticate();
+        }
 
         // Update connection state
         {
@@ -69,7 +59,7 @@ bool WebSocketClient::connect() {
         }
 
         // Start reading messages in background
-        io_thread_ = std::thread(&WebSocketClient::runIOContext, this);
+        io_thread_ = std::make_unique<std::thread>(&WebSocketClient::runIOContext, this);
         startReading();
 
         // Trigger connection callback if set
@@ -89,6 +79,52 @@ bool WebSocketClient::connect() {
         
         return false;
     }
+}
+
+void WebSocketClient::disconnect(bool /* graceful */) {
+    try {
+        // Ensure thread is stopped
+        if (io_thread_ && io_thread_->joinable()) {
+            io_context_.stop();
+            io_thread_->join();
+        }
+
+        // Close WebSocket if it's open
+        if (websocket_ && websocket_->is_open()) {
+            boost::beast::error_code ec;
+            websocket_->close(boost::beast::websocket::close_code::normal, ec);
+            
+            if (ec) {
+                std::cerr << "Error closing WebSocket: " << ec.message() << std::endl;
+            }
+        }
+
+        // Reset state
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            connection_state_ = ConnectionState::DISCONNECTED;
+        }
+
+        // Clear subscribed channels
+        subscribed_channels_.clear();
+
+        // Trigger disconnection callback if set
+        if (on_disconnection_callback_) {
+            on_disconnection_callback_();
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Disconnect Error: " << e.what() << std::endl;
+    }
+}
+
+ConnectionState WebSocketClient::getConnectionState() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return connection_state_;
+}
+
+bool WebSocketClient::isConnected() const {
+    return getConnectionState() == ConnectionState::CONNECTED;
 }
 
 std::string WebSocketClient::generateSignature() {
@@ -155,7 +191,6 @@ void WebSocketClient::authenticate() {
     
     try {
         std::string response = sendMessage(auth_message);
-        // Log or handle authentication response
         std::cout << "Authentication Response: " << response << std::endl;
     }
     catch (const std::exception& e) {
@@ -166,43 +201,6 @@ void WebSocketClient::authenticate() {
 
 void WebSocketClient::runIOContext() {
     io_context_.run();
-}
-
-void WebSocketClient::disconnect() {
-    try {
-        // Ensure thread is stopped
-        if (io_thread_.joinable()) {
-            io_context_.stop();
-            io_thread_.join();
-        }
-
-        // Close WebSocket if it's open
-        if (websocket_ && websocket_->is_open()) {
-            boost::beast::error_code ec;
-            websocket_->close(boost::beast::websocket::close_code::normal, ec);
-            
-            if (ec) {
-                std::cerr << "Error closing WebSocket: " << ec.message() << std::endl;
-            }
-        }
-
-        // Reset state
-        {
-            std::lock_guard<std::mutex> lock(state_mutex_);
-            connection_state_ = ConnectionState::DISCONNECTED;
-        }
-
-        // Clear subscribed channels
-        subscribed_channels_.clear();
-
-        // Trigger disconnection callback if set
-        if (on_disconnection_callback_) {
-            on_disconnection_callback_();
-        }
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Disconnect Error: " << e.what() << std::endl;
-    }
 }
 
 void WebSocketClient::startReading() {
@@ -255,9 +253,7 @@ std::string WebSocketClient::sendMessage(const std::string& message) {
             throw std::runtime_error("Failed to send message");
         }
 
-        // Placeholder: Retrieve the response (implement response retrieval logic)
-        // std::string response = waitForResponse();
-        // return response;
+        // Placeholder: For now, return a success message
         return R"({"result": "success", "id": 1})";
     }
     catch (const std::exception& e) {
@@ -266,6 +262,17 @@ std::string WebSocketClient::sendMessage(const std::string& message) {
     }
 }
 
+void WebSocketClient::subscribeToChannels(const std::vector<std::string>& channels) {
+    for (const auto& channel : channels) {
+        subscribeToChannel(channel);
+    }
+}
+
+void WebSocketClient::unsubscribeFromChannels(const std::vector<std::string>& channels) {
+    for (const auto& channel : channels) {
+        unsubscribeFromChannel(channel);
+    }
+}
 
 void WebSocketClient::subscribeToChannel(const std::string& channel) {
     // Construct subscription request JSON
@@ -306,15 +313,22 @@ void WebSocketClient::unsubscribeFromChannel(const std::string& channel) {
     }
 }
 
+std::vector<std::string> WebSocketClient::getSubscribedChannels() const {
+    return subscribed_channels_;
+}
+
 void WebSocketClient::setOnMessageCallback(std::function<void(const std::string&)> callback) {
+    std::lock_guard<std::mutex> lock(callback_mutex_);
     on_message_callback_ = callback;
 }
 
 void WebSocketClient::setOnConnectionCallback(std::function<void()> callback) {
+    std::lock_guard<std::mutex> lock(callback_mutex_);
     on_connection_callback_ = callback;
 }
 
 void WebSocketClient::setOnDisconnectionCallback(std::function<void()> callback) {
+    std::lock_guard<std::mutex> lock(callback_mutex_);
     on_disconnection_callback_ = callback;
 }
 

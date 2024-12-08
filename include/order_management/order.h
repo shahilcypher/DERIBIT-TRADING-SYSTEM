@@ -1,82 +1,61 @@
 #pragma once
 
+#include "nlohmann/json.hpp"
 #include <string>
-#include <nlohmann/json.hpp>
-#include <chrono>
+#include <vector>
 
-namespace deribit {
-namespace order {
+using json = nlohmann::json;
+
+namespace OrderManagement {
+
+enum class OrderType {
+    LIMIT,
+    STOP_LIMIT,
+    TAKE_LIMIT,
+    MARKET,
+    STOP_MARKET,
+    TAKE_MARKET,
+    MARKET_LIMIT,
+    TRAILING_STOP
+};
+
+enum class TimeInForce {
+    GOOD_TIL_CANCELLED,
+    GOOD_TIL_DAY,
+    FILL_OR_KILL,
+    IMMEDIATE_OR_CANCEL
+};
 
 class Order {
 public:
-    // Enum for order types
-    enum class Type {
-        LIMIT,
-        MARKET,
-        STOP_LIMIT,
-        STOP_MARKET
-    };
+    Order() = default;
+    Order(const std::string& instrument, const std::string& side, 
+          double amount, OrderType type, TimeInForce tif, 
+          const std::string& label = "", double price = 0.0);
 
-    // Enum for order directions
-    enum class Direction {
-        BUY,
-        SELL
-    };
+    std::string getInstrument() const { return m_instrument; }
+    std::string getSide() const { return m_side; }
+    double getAmount() const { return m_amount; }
+    OrderType getType() const { return m_type; }
+    TimeInForce getTimeInForce() const { return m_timeInForce; }
+    std::string getLabel() const { return m_label; }
+    double getPrice() const { return m_price; }
+    std::string getOrderId() const { return m_orderId; }
+    void setOrderId(const std::string& orderId) { m_orderId = orderId; }
 
-    // Enum for order states
-    enum class State {
-        OPEN,
-        FILLED,
-        CANCELLED,
-        REJECTED,
-        PARTIALLY_FILLED
-    };
-
-    // Constructor with default arguments
-    Order(
-        const std::string& instrument_name,
-        Type type,
-        Direction direction,
-        double amount,
-        double price = 0.0,
-        const std::string& label = ""
-    );
-
-    // Factory method to create an order from JSON response
-    static Order fromJson(const nlohmann::json& orderJson);
-
-    // Getters
-    std::string getOrderId() const;
-    std::string getInstrumentName() const;
-    Type getType() const;
-    Direction getDirection() const;
-    State getState() const;
-    double getAmount() const;
-    double getPrice() const;
-    double getFilledAmount() const;
-    std::string getLabel() const;
-    std::chrono::system_clock::time_point getCreationTime() const;
-
-    // Update order state from API response
-    void updateFromJson(const nlohmann::json& orderJson);
-
-    // Convert enums to strings (useful for logging/API)
-    static std::string typeToString(Type type);
-    static std::string directionToString(Direction direction);
-    static std::string stateToString(State state);
+    json toJson(const std::string& accessToken) const;
+    static OrderType stringToOrderType(const std::string& typeStr);
+    static TimeInForce stringToTimeInForce(const std::string& tifStr);
 
 private:
-    std::string m_orderId;
-    std::string m_instrumentName;
-    Type m_type;
-    Direction m_direction;
-    State m_state;
+    std::string m_instrument;
+    std::string m_side;
     double m_amount;
-    double m_price;
-    double m_filledAmount;
+    OrderType m_type;
+    TimeInForce m_timeInForce;
     std::string m_label;
-    std::chrono::system_clock::time_point m_creationTime;
+    double m_price;
+    std::string m_orderId;
 };
 
-} // namespace order
-} // namespace deribit
+} // namespace OrderManagement

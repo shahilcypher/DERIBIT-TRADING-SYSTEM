@@ -1,134 +1,79 @@
 #include "order_management/order.h"
 #include <stdexcept>
-#include <unordered_map>
 
-namespace deribit {
-namespace order {
+namespace OrderManagement {
 
-Order::Order(
-    const std::string& instrument_name,
-    Type type,
-    Direction direction,
-    double amount,
-    double price,
-    const std::string& label
-) : 
-    m_instrumentName(instrument_name),
-    m_type(type),
-    m_direction(direction),
-    m_state(State::OPEN),       // m_state first
-    m_amount(amount),           // m_amount second
-    m_filledAmount(0.0),        // m_filledAmount third
-    m_label(label),             // m_label fourth
-    m_price(price),             // m_price fifth
-    m_creationTime(std::chrono::system_clock::now()) 
-{
-}
+Order::Order(const std::string& instrument, const std::string& side, 
+             double amount, OrderType type, TimeInForce tif, 
+             const std::string& label, double price)
+    : m_instrument(instrument), 
+      m_side(side), 
+      m_amount(amount), 
+      m_type(type), 
+      m_timeInForce(tif), 
+      m_label(label), 
+      m_price(price) {}
 
-Order Order::fromJson(const nlohmann::json& orderJson) {
-    if (!orderJson.contains("instrument_name") || 
-        !orderJson.contains("order_type") || 
-        !orderJson.contains("direction") || 
-        !orderJson.contains("amount")) {
-        throw std::invalid_argument("Incomplete order JSON");
-    }
-
-    // Map Deribit API order types to internal enum
-    static const std::unordered_map<std::string, Type> typeMap = {
-        {"limit", Type::LIMIT},
-        {"market", Type::MARKET},
-        {"stop_limit", Type::STOP_LIMIT},
-        {"stop_market", Type::STOP_MARKET}
-    };
-
-    // Map Deribit API directions to internal enum
-    static const std::unordered_map<std::string, Direction> directionMap = {
-        {"buy", Direction::BUY},
-        {"sell", Direction::SELL}
-    };
-
-    // Map Deribit API states to internal enum
-    static const std::unordered_map<std::string, State> stateMap = {
-        {"open", State::OPEN},
-        {"filled", State::FILLED},
-        {"cancelled", State::CANCELLED},
-        {"rejected", State::REJECTED},
-        {"partially_filled", State::PARTIALLY_FILLED}
-    };
-
-    Order order(
-        orderJson.value("instrument_name", ""),
-        typeMap.at(orderJson.value("order_type", "limit")),
-        directionMap.at(orderJson.value("direction", "buy")),
-        orderJson.value("amount", 0.0),
-        orderJson.value("price", 0.0),
-        orderJson.value("label", "")
-    );
-
-    order.updateFromJson(orderJson);
-    return order;
-}
-
-void Order::updateFromJson(const nlohmann::json& orderJson) {
-    // Update order details from JSON response
-    if (orderJson.contains("order_id")) {
-        m_orderId = orderJson["order_id"].get<std::string>();
-    }
-
-    if (orderJson.contains("order_state")) {
-        static const std::unordered_map<std::string, State> stateMap = {
-            {"open", State::OPEN},
-            {"filled", State::FILLED},
-            {"cancelled", State::CANCELLED},
-            {"rejected", State::REJECTED},
-            {"partially_filled", State::PARTIALLY_FILLED}
-        };
-
-        m_state = stateMap.at(orderJson["order_state"].get<std::string>());
-    }
-
-    if (orderJson.contains("filled_amount")) {
-        m_filledAmount = orderJson["filled_amount"].get<double>();
-    }
-}
-
-// Getters
-std::string Order::getOrderId() const { return m_orderId; }
-std::string Order::getInstrumentName() const { return m_instrumentName; }
-Order::Type Order::getType() const { return m_type; }
-Order::Direction Order::getDirection() const { return m_direction; }
-Order::State Order::getState() const { return m_state; }
+std::string Order::getInstrument() const { return m_instrument; }
+std::string Order::getSide() const { return m_side; }
 double Order::getAmount() const { return m_amount; }
-double Order::getPrice() const { return m_price; }
-double Order::getFilledAmount() const { return m_filledAmount; }
+OrderType Order::getType() const { return m_type; }
+TimeInForce Order::getTimeInForce() const { return m_timeInForce; }
 std::string Order::getLabel() const { return m_label; }
-std::chrono::system_clock::time_point Order::getCreationTime() const { return m_creationTime; }
+double Order::getPrice() const { return m_price; }
+std::string Order::getOrderId() const { return m_orderId; }
+void Order::setOrderId(const std::string& orderId) { m_orderId = orderId; }
 
-// Static conversion methods
-std::string Order::typeToString(Type type) {
-    switch(type) {
-        case Type::LIMIT: return "limit";
-        case Type::MARKET: return "market";
-        case Type::STOP_LIMIT: return "stop_limit";
-        case Type::STOP_MARKET: return "stop_market";
-        default: throw std::invalid_argument("Unknown order type");
+json Order::toJson(const std::string& accessToken) const {
+    json j;
+    j["instrument_name"] = m_instrument;
+    j["access_token"] = accessToken;
+    j["amount"] = m_amount;
+    j["type"] = (m_side == "buy") ? "private/buy" : "private/sell";
+    j["label"] = m_label;
+
+    switch(m_timeInForce) {
+        case TimeInForce::GOOD_TIL_CANCELLED:
+            j["time_in_force"] = "good_til_cancelled";
+            break;
+        case TimeInForce::GOOD_TIL_DAY:
+            j["time_in_force"] = "good_til_day";
+            break;
+        case TimeInForce::FILL_OR_KILL:
+            j["time_in_force"] = "fill_or_kill";
+            break;
+        case TimeInForce::IMMEDIATE_OR_CANCEL:
+            j["time_in_force"] = "immediate_or_cancel";
+            break;
     }
-}
 
-std::string Order::directionToString(Direction direction) {
-    return (direction == Direction::BUY) ? "buy" : "sell";
-}
-
-std::string Order::stateToString(State state) {
-    switch(state) {
-        case State::OPEN: return "open";
-        case State::FILLED: return "filled";
-        case State::CANCELLED: return "cancelled";
-        case State::REJECTED: return "rejected";
-        case State::PARTIALLY_FILLED: return "partially_filled";
-        default: throw std::invalid_argument("Unknown order state");
+    if (m_price > 0) {
+        j["price"] = m_price;
     }
+
+    return j;
 }
 
-} // namespace order
-} // namespace deribit
+OrderType Order::stringToOrderType(const std::string& typeStr) {
+    if (typeStr == "limit") return OrderType::LIMIT;
+    if (typeStr == "stop_limit") return OrderType::STOP_LIMIT;
+    if (typeStr == "take_limit") return OrderType::TAKE_LIMIT;
+    if (typeStr == "market") return OrderType::MARKET;
+    if (typeStr == "stop_market") return OrderType::STOP_MARKET;
+    if (typeStr == "take_market") return OrderType::TAKE_MARKET;
+    if (typeStr == "market_limit") return OrderType::MARKET_LIMIT;
+    if (typeStr == "trailing_stop") return OrderType::TRAILING_STOP;
+    
+    throw std::invalid_argument("Invalid order type: " + typeStr);
+}
+
+TimeInForce Order::stringToTimeInForce(const std::string& tifStr) {
+    if (tifStr == "good_til_cancelled") return TimeInForce::GOOD_TIL_CANCELLED;
+    if (tifStr == "good_til_day") return TimeInForce::GOOD_TIL_DAY;
+    if (tifStr == "fill_or_kill") return TimeInForce::FILL_OR_KILL;
+    if (tifStr == "immediate_or_cancel") return TimeInForce::IMMEDIATE_OR_CANCEL;
+    
+    throw std::invalid_argument("Invalid time in force: " + tifStr);
+}
+
+} // namespace OrderManagement

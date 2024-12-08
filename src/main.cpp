@@ -1,90 +1,132 @@
 #include "websocket/websocket_client.h"
 #include "order_management/order_manager.h"
+#include "market_data/market_data_handler.h"
 #include "utils/config_loader.h"
+#include "utils/logger.h"
+
 #include <iostream>
 #include <thread>
 #include <chrono>
 #include <nlohmann/json.hpp>
 
+using namespace OrderManagement;
+using namespace deribit;
+
 int main() {
     try {
+        // Initialize logging
+        utils::Logger::getInstance().setLogLevel(utils::LogLevel::INFO);
+        utils::Logger::getInstance().log(utils::LogLevel::INFO, "Application started");
+
         // Load credentials securely
-        std::string client_id = deribit::config::ConfigLoader::getClientId();
-        std::string client_secret = deribit::config::ConfigLoader::getClientSecret();
+        std::string client_id = config::ConfigLoader::getClientId();
+        std::string client_secret = config::ConfigLoader::getClientSecret();
 
         // Initialize WebSocket Client
-        deribit::websocket::WebSocketClient client(
+        websocket::WebSocketClient client(
             "test.deribit.com",  // Host
             "443",               // Port
             client_id,           // API Key
             client_secret        // Secret Key
         );
 
-        // Set up message callback
-        client.setOnMessageCallback([](const std::string& message) {
-            std::cout << "Received message: " << message << std::endl;
+        // Market Data Handler
+        market_data::MarketDataHandler marketDataHandler(client);
+
+        // Set up message callback with logging and performance tracking
+        client.setOnMessageCallback([&](const std::string& message) {
+            auto start = std::chrono::high_resolution_clock::now();
+            
+            utils::Logger::getInstance().log(utils::LogLevel::DEBUG, 
+                "Received WebSocket message: " + message);
+            
+            // Process market data
+            marketDataHandler.processMessage(message);
         });
 
         // Attempt to connect
         if (client.connect()) {
-            std::cout << "Successfully connected to Deribit!" << std::endl;
+            utils::Logger::getInstance().log(utils::LogLevel::INFO, 
+                "Successfully connected to Deribit!");
 
             // Create OrderManager
-            deribit::OrderManager orderManager(client);
+            OrderManager orderManager(client_id);
 
-            // Demonstrate order placement
+            // Subscribe to market data channels
+            std::vector<std::string> channels = {
+                "trades.BTC-PERPETUAL.raw",
+                "ticker.BTC-PERPETUAL.raw",
+                "book.BTC-PERPETUAL.raw"
+            };
+            marketDataHandler.subscribeToChannels(channels);
+
+            // Demonstrate comprehensive trading workflow
             try {
-                // Place a buy limit order
-                auto orderResponse = orderManager.placeOrder(
-                    "ADA_USDC-PERPETUAL",  // Instrument name
-                    deribit::OrderManager::OrderDirection::BUY,
-                    deribit::OrderManager::OrderType::LIMIT,
-                    100,  // Amount
-                    0.50,  // Price
-                    deribit::OrderManager::TimeInForce::GOOD_TIL_CANCELLED,
-                    "Test ADA Buy Order"
+                // Create a complex limit order
+                Order buyOrder(
+                    "BTC-PERPETUAL",  // Instrument
+                    "buy",             // Side
+                    0.01,               // Amount
+                    Order::stringToOrderType("LIMIT"),  // Order Type
+                    Order::stringToTimeInForce("GOOD_TIL_CANCELLED"),  // Time in Force
+                    "Test BTC Buy Order", // Label
+                    50000.0             // Price
                 );
 
-                // Check order response structure
-                if (orderResponse.contains("result") && orderResponse["result"].contains("order")) {
+                // Place the order
+                auto orderResponse = orderManager.placeOrder(buyOrder);
+                
+                // Check and log order response
+                if (orderResponse.contains("result") && 
+                    orderResponse["result"].contains("order")) {
                     auto order = orderResponse["result"]["order"];
-                    std::cout << "Order placed successfully:\n"
-                              << orderResponse.dump(4) << std::endl;
-
-                    // Optional: Display order details
-                    std::cout << "Order ID: " << order["order_id"] << std::endl;
-                    std::cout << "Order State: " << order["order_state"] << std::endl;
-
-                    // Retrieve and display open orders
-                    auto openOrdersResponse = orderManager.getOpenOrders("ADA_USDC-PERPETUAL");
-
-                    // Iterate through the vector of JSON objects
-                    if (!openOrdersResponse.empty()) {
-                        for (const auto& openOrder : openOrdersResponse) {
-                            std::cout << "Open Order: " << openOrder.dump(4) << std::endl;
-                        }
-                    } else {
-                        std::cerr << "No open orders found." << std::endl;
+                    utils::Logger::getInstance().log(utils::LogLevel::INFO, 
+                        "Order placed successfully: " + order.dump(4));
+                    
+                    // Retrieve open orders
+                    auto openOrders = orderManager.getOpenOrders("BTC-PERPETUAL");
+                    
+                    // Log open orders
+                    for (const auto& openOrder : openOrders) {
+                        utils::Logger::getInstance().log(utils::LogLevel::INFO, 
+                            "Open Order: " + openOrder.dump(4));
                     }
-                } else {
-                    std::cerr << "Unexpected order response structure:\n"
-                              << orderResponse.dump(4) << std::endl;
+                }
+
+                // Demonstrate order modification and cancellation
+                auto openOrdersResponse = orderManager.getOpenOrders();
+                if (!openOrdersResponse.empty()) {
+                    auto firstOrderId = openOrdersResponse[0]["order_id"].get<std::string>();
+                    
+                    // Modify order
+                    auto modifyResponse = orderManager.modifyOrder(
+                        firstOrderId, 
+                        51000.0,  // New price 
+                        0.02      // New amount
+                    );
+                    
+                    // Cancel order
+                    auto cancelResponse = orderManager.cancelOrder(firstOrderId);
                 }
             }
             catch (const std::exception& orderEx) {
-                std::cerr << "Order Error: " << orderEx.what() << std::endl;
+                utils::Logger::getInstance().log(utils::LogLevel::ERROR, 
+                    std::string("Order Error: ") + orderEx.what());
             }
+
+            // Keep application running to process WebSocket messages
+            std::this_thread::sleep_for(std::chrono::minutes(5));
         } 
         else {
-            std::cerr << "Failed to connect to Deribit" << std::endl;
+            utils::Logger::getInstance().log(utils::LogLevel::ERROR, 
+                "Failed to connect to Deribit");
             return 1;
         }
 
-        // Keep application running to process WebSocket messages
-        std::this_thread::sleep_for(std::chrono::minutes(1));
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+    } 
+    catch (const std::exception& e) {
+        utils::Logger::getInstance().log(utils::LogLevel::CRITICAL, 
+            std::string("Unhandled Exception: ") + e.what());
         return 1;
     }
 
