@@ -37,6 +37,7 @@ add_executable(deribit_trader
     src/api/api.cpp
     src/utils/utils.cpp
     src/main.cpp
+    src/websocket/websocket_client.cpp
 )
 
 # Add include directories
@@ -58,6 +59,7 @@ target_link_libraries(deribit_trader
         OpenSSL::SSL
         OpenSSL::Crypto
         fmt::fmt
+        readline
 )
 
 # Debugging information

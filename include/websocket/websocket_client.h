@@ -1,114 +1,88 @@
-#pragma once
+#ifndef WEBSOCKET_CLIENT_H
+#define WEBSOCKET_CLIENT_H
 
+#include <cstdlib>
+#include <iostream>
+#include <map>
 #include <string>
-#include <functional>
-#include <vector>
-#include <thread>
+#include <sstream>
 #include <mutex>
-#include <queue>
-#include <atomic>
-#include <chrono>
+#include <condition_variable>
+#include <vector>
+#include <functional>
 
+#include <websocketpp/config/asio_client.hpp> 
 #include <boost/asio.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/websocket.hpp>
-#include <boost/beast/websocket/ssl.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/asio/ssl/context.hpp> 
+#include <websocketpp/client.hpp> 
+
+#include <websocketpp/common/thread.hpp>
+#include <websocketpp/common/memory.hpp>
+
 #include <nlohmann/json.hpp>
 
-#include <openssl/hmac.h>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
+using json = nlohmann::json;
 
-namespace deribit {
-namespace websocket {
+extern bool AUTH_SENT;
 
-class WebSocketClient {
-public:
-    // Enum for connection states with more granular status tracking
-    enum class ConnectionState {
-        DISCONNECTED,
-        CONNECTING,
-        CONNECTED,
-        RECONNECTING,
-        ERROR
-    };
+typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
+typedef std::shared_ptr<boost::asio::ssl::context> context_ptr;
 
-    // Enhanced constructor with more configuration options
-    WebSocketClient(
-        const std::string& host = "test.deribit.com", 
-        const std::string& port = "443", 
-        const std::string& api_key = "",
-        const std::string& secret_key = ""
-    );
-    ~WebSocketClient();
-
-    // Connection Management
-    bool connect(bool auto_reconnect = false);
-    void disconnect(bool graceful = true);
-    ConnectionState getConnectionState() const;
-    bool isConnected() const;
-
-    // Subscription Management
-    void subscribeToChannels(const std::vector<std::string>& channels);
-    void unsubscribeFromChannels(const std::vector<std::string>& channels);
-    std::vector<std::string> getSubscribedChannels() const;
-
-    // Message Handling
-    std::string sendMessage(const std::string& message);
-    void subscribeToChannel(const std::string& channel);
-    void unsubscribeFromChannel(const std::string& channel);
-
-    // Callback Registrations
-    void setOnMessageCallback(std::function<void(const std::string&)> callback);
-    void setOnConnectionCallback(std::function<void()> callback);
-    void setOnDisconnectionCallback(std::function<void()> callback);
-
+class connection_metadata {
 private:
-    // Authentication and Security
-    std::string generateSignature();
-    void authenticate();
+    int m_id;
+    websocketpp::connection_hdl m_hdl;
+    std::string m_status;
+    std::string m_uri;
+    std::string m_server;
+    std::string m_error_reason;
+    std::vector<std::string> m_summaries;
 
-    // Internal Connection Management
-    void runIOContext();
-    void startReading();
-    void handleRead(boost::beast::error_code ec, std::size_t bytes_transferred);
+public:
+    typedef websocketpp::lib::shared_ptr<connection_metadata> ptr;
 
-    // Configuration and Connection Parameters
-    std::string host_;
-    std::string port_;
-    std::string api_key_;
-    std::string secret_key_;
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::vector<std::string> m_messages;
+    bool MSG_PROCESSED;
 
-    // Networking Components
-    boost::asio::io_context io_context_;
-    boost::asio::ssl::context ssl_context_;
-    
-    // Secure WebSocket Stream Type
-    using SecureWebSocket = boost::beast::websocket::stream<
-        boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
+    connection_metadata(int id, websocketpp::connection_hdl hdl, std::string uri);
 
-    std::unique_ptr<SecureWebSocket> websocket_;
+    int get_id();
+    websocketpp::connection_hdl get_hdl();
+    std::string get_status();
+    void record_sent_message(std::string const &message);
+    void record_summary(std::string const &message, std::string const &sent);
 
-    // State and Synchronization
-    std::atomic<ConnectionState> connection_state_{ConnectionState::DISCONNECTED};
-    mutable std::mutex state_mutex_;
-    mutable std::mutex callback_mutex_;
+    void on_open(client * c, websocketpp::connection_hdl hdl);
+    void on_fail(client * c, websocketpp::connection_hdl hdl);
+    void on_close(client * c, websocketpp::connection_hdl hdl);
+    void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg);
 
-    // Channel and Subscription Management
-    std::vector<std::string> subscribed_channels_;
-
-    // Thread Management
-    std::unique_ptr<std::thread> io_thread_;
-
-    // Callback Handlers
-    std::function<void(const std::string&)> on_message_callback_;
-    std::function<void()> on_connection_callback_;
-    std::function<void()> on_disconnection_callback_;
-
-    // Message Buffers
-    boost::beast::multi_buffer read_buffer_;
+    friend std::ostream &operator<< (std::ostream &out, connection_metadata const &data);
 };
 
-} // namespace websocket
-} // namespace deribit
+context_ptr on_tls_init();
+
+class websocket_endpoint {
+private:
+    typedef std::map<int, connection_metadata::ptr> con_list;
+
+    client m_endpoint;
+    websocketpp::lib::shared_ptr<websocketpp::lib::thread> m_thread;
+
+    con_list m_connection_list;
+    int m_next_id;
+
+public:
+    websocket_endpoint();
+    ~websocket_endpoint();
+
+    int connect(std::string const &uri);
+    connection_metadata::ptr get_metadata(int id) const;
+    void close(int id, websocketpp::close::status::value code, std::string reason);
+    int send(int id, std::string message);
+};
+
+#endif // WEBSOCKET_CLIENT_H
