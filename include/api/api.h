@@ -5,9 +5,11 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 using json = nlohmann::json;
 extern bool AUTH_SENT;
-extern std::vector<std::string> SUPPORTED_CURRENCIES;
+extern vector<string> SUPPORTED_CURRENCIES;
 
 class jsonrpc : public json {
     public:
@@ -19,7 +21,7 @@ class jsonrpc : public json {
             (*this)["id"] = number;
         }
         
-        jsonrpc(const std::string& method){
+        jsonrpc(const string& method){
             (*this)["jsonrpc"] = "2.0",
             (*this)["method"] = method;
             srand( time(NULL) );
@@ -30,19 +32,19 @@ class jsonrpc : public json {
 
 namespace api {
 
-    std::string process(const std::string &input);
+    string process(const string &input);
 
-    std::string authorize(const std::string &cmd);
+    string authorize(const string &cmd);
 
-    std::string sell(const std::string &input);
+    string sell(const string &input);
 
-    std::string buy(const std::string &input);
+    string buy(const string &input);
 
-    std::string get_open_orders(const std::string &input);
+    string get_open_orders(const string &input);
 
-    std::string modify(const std::string &input);
+    string modify(const string &input);
 
-    std::string cancel(const std::string &input);
+    string cancel(const string &input);
 
-    std::string cancel_all(const std::string &input);
+    string cancel_all(const string &input);
 }

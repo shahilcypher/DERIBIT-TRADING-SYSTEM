@@ -8,16 +8,18 @@
 #include <sstream>
 #include <vector>
 
+using namespace std;
+
 using json = nlohmann::json;
 bool AUTH_SENT = false;
-std::vector<std::string> SUPPORTED_CURRENCIES = {"BTC", "ETH", "SOL", "XRP", "MATIC",
+vector<string> SUPPORTED_CURRENCIES = {"BTC", "ETH", "SOL", "XRP", "MATIC",
                                                 "USDC", "USDT", "JPY", "CAD", "AUD", "GBP", 
                                                 "EUR", "USD", "CHF", "BRL", "MXN", "COP", 
                                                 "CLP", "PEN", "ECS", "ARS"};
 
-std::string api::process(const std::string &input) {
+string api::process(const string &input) {
 
-    std::map<std::string, std::function<std::string(std::string)>> action_map = 
+    map<string, function<string(string)>> action_map = 
     {
         {"authorize", api::authorize},
         {"sell", api::sell},
@@ -27,9 +29,9 @@ std::string api::process(const std::string &input) {
         {"cancel", api::cancel}
     };
 
-    std::istringstream s(input.substr(8));
+    istringstream s(input.substr(8));
     int id;
-    std::string cmd;
+    string cmd;
     s >> id >> cmd;
 
     auto find = action_map.find(cmd);
@@ -40,18 +42,18 @@ std::string api::process(const std::string &input) {
     return find->second(input.substr(8));
 }
 
-std::string api::authorize(const std::string &input) {
+string api::authorize(const string &input) {
 
-    std::istringstream s(input);
-    std::string auth;
-    std::string id;
-    std::string flag{""};
-    std::string client_id;
-    std::string secret;
+    istringstream s(input);
+    string auth;
+    string id;
+    string flag{""};
+    string client_id;
+    string secret;
     long long tm = utils::time_now();
 
     s >> id >> auth >> client_id >> secret >> flag;
-    std::string nonce = utils::gen_random(10);
+    string nonce = utils::gen_random(10);
 
     jsonrpc j;
     j["method"] = "public/auth";
@@ -71,37 +73,37 @@ std::string api::authorize(const std::string &input) {
     return j.dump();
 }
 
-std::string api::sell(const std::string &input) {
-    std::string sell;
-    std::string id;
-    std::string instrument;
-    std::string cmd;
-    std::string access_key;
-    std::string order_type;
-    std::string label;
-    std::string frc;
+string api::sell(const string &input) {
+    string sell;
+    string id;
+    string instrument;
+    string cmd;
+    string access_key;
+    string order_type;
+    string label;
+    string frc;
     int contracts{0};
     int amount{0};
     int price{0};
 
-    std::istringstream s(input);
+    istringstream s(input);
     s >> id >> sell >> instrument >> label;
 
     if (Password::password().getAccessToken() == "") {
         utils::printcmd("Enter the access token: ");
-        std::cin >> access_key;
+        cin >> access_key;
     }
     else {
         access_key = Password::password().getAccessToken();
     }
 
     utils::printcmd("\nEnter the amount or contracts: ");
-    std::cin >> cmd;
+    cin >> cmd;
     if (cmd == "contracts") {
-        std::cin >> contracts;
+        cin >> contracts;
     }
     else if (cmd == "amount") {
-        std::cin >> amount;
+        cin >> amount;
     }
     else {
         utils::printerr("\nIncorrect syntax; couldn't place order\n");
@@ -109,24 +111,24 @@ std::string api::sell(const std::string &input) {
     }
 
     utils::printcmd("Enter the order type: ");
-    std::cin >> order_type;
-    std::vector<std::string> permitted_order_types = {"limit", "stop_limit", "take_limit", "market", "stop_market", "take_market", "market_limit", "trailing_stop"};
+    cin >> order_type;
+    vector<string> permitted_order_types = {"limit", "stop_limit", "take_limit", "market", "stop_market", "take_market", "market_limit", "trailing_stop"};
 
-    if (!std::any_of(permitted_order_types.begin(), permitted_order_types.end(), [&](std::string val){ return val == order_type; }))
+    if (!any_of(permitted_order_types.begin(), permitted_order_types.end(), [&](string val){ return val == order_type; }))
     {
         utils::printerr("\nIncorrect syntax; couldn't place order\nOrder type can be only one of \nlimit\nstop_limit\ntake_limit\nmarket\nstop_market\ntake_market\nmarket_limit\ntrailing_stop\n");
         return "";
     }
     else if (order_type == "limit" || order_type == "stop_limit") {
         utils::printcmd("\nEnter the price at which you want to sell: ");
-        std::cin >> price;
+        cin >> price;
     }
 
     utils::printcmd("Enter the time-in-force value: ");
-    std::cin >> frc;
+    cin >> frc;
 
-    std::vector<std::string> permitted_tif = {"good_til_cancelled", "good_til_day", "fill_or_kill", "immediate_or_cancel"};
-    if (!std::any_of(permitted_tif.begin(), permitted_tif.end(), [&](std::string val){ return val == frc; }))
+    vector<string> permitted_tif = {"good_til_cancelled", "good_til_day", "fill_or_kill", "immediate_or_cancel"};
+    if (!any_of(permitted_tif.begin(), permitted_tif.end(), [&](string val){ return val == frc; }))
     {
         utils::printerr("\nIncorrect syntax; couldn't place order\nTime-in-force value can be only one of \ngood_til_cancelled\ngood_til_day\nfill_or_kill\nimmediate_or_cancel\n");
         return "";
@@ -149,37 +151,37 @@ std::string api::sell(const std::string &input) {
     return j.dump();
 }
 
-std::string api::buy(const std::string &input) {
-    std::string buy;
-    std::string id;
-    std::string instrument;
-    std::string cmd;
-    std::string access_key;
-    std::string order_type;
-    std::string label;
-    std::string frc;
+string api::buy(const string &input) {
+    string buy;
+    string id;
+    string instrument;
+    string cmd;
+    string access_key;
+    string order_type;
+    string label;
+    string frc;
     int contracts{0};
     int amount{0};
     int price{0};
 
-    std::istringstream s(input);
+    istringstream s(input);
     s >> id >> buy >> instrument >> label;
 
     if (Password::password().getAccessToken() == "") {
         utils::printcmd("Enter the access token: ");
-        std::cin >> access_key;
+        cin >> access_key;
     }
     else {
         access_key = Password::password().getAccessToken();
     }
 
     utils::printcmd("\nEnter the amount or contracts: ");
-    std::cin >> cmd;
+    cin >> cmd;
     if (cmd == "contracts") {
-        std::cin >> contracts;
+        cin >> contracts;
     }
     else if (cmd == "amount") {
-        std::cin >> amount;
+        cin >> amount;
     }
     else {
         utils::printerr("\nIncorrect syntax; couldn't place order\n");
@@ -187,24 +189,24 @@ std::string api::buy(const std::string &input) {
     }
 
     utils::printcmd("Enter the order type: ");
-    std::cin >> order_type;
-    std::vector<std::string> permitted_order_types = {"limit", "stop_limit", "take_limit", "market", "stop_market", "take_market", "market_limit", "trailing_stop"};
+    cin >> order_type;
+    vector<string> permitted_order_types = {"limit", "stop_limit", "take_limit", "market", "stop_market", "take_market", "market_limit", "trailing_stop"};
 
-    if (!std::any_of(permitted_order_types.begin(), permitted_order_types.end(), [&](std::string val){ return val == order_type; }))
+    if (!any_of(permitted_order_types.begin(), permitted_order_types.end(), [&](string val){ return val == order_type; }))
     {
         utils::printerr("\nIncorrect syntax; couldn't place order\nOrder type can be only one of \nlimit\nstop_limit\ntake_limit\nmarket\nstop_market\ntake_market\nmarket_limit\ntrailing_stop\n");
         return "";
     }
     else if (order_type == "limit" || order_type == "stop_limit") {
         utils::printcmd("\nEnter the price at which you want to sell: ");
-        std::cin >> price;
+        cin >> price;
     }
     
     utils::printcmd("Enter the time-in-force value: ");
-    std::cin >> frc;
+    cin >> frc;
     
-    std::vector<std::string> permitted_tif = {"good_til_cancelled", "good_til_day", "fill_or_kill", "immediate_or_cancel"};
-    if (!std::any_of(permitted_tif.begin(), permitted_tif.end(), [&](std::string val){ return val == frc; }))
+    vector<string> permitted_tif = {"good_til_cancelled", "good_til_day", "fill_or_kill", "immediate_or_cancel"};
+    if (!any_of(permitted_tif.begin(), permitted_tif.end(), [&](string val){ return val == frc; }))
     {
         utils::printerr("\nIncorrect syntax; couldn't place order\nTime-in-force value can be only one of \ngood_til_cancelled\ngood_til_day\nfill_or_kill\nimmediate_or_cancel\n");
         return "";
@@ -227,13 +229,13 @@ std::string api::buy(const std::string &input) {
     return j.dump();
 }
 
-std::string api::get_open_orders(const std::string &input) {
-    std::istringstream is(input);
+string api::get_open_orders(const string &input) {
+    istringstream is(input);
 
     int id;
-    std::string cmd;
-    std::string opt1;
-    std::string opt2;
+    string cmd;
+    string opt1;
+    string opt2;
     is >> id >> cmd >> opt1 >> opt2;
 
     jsonrpc j;
@@ -241,7 +243,7 @@ std::string api::get_open_orders(const std::string &input) {
     if (opt1 == "") {
         j["method"] = "private/get_open_orders";
     }
-    else if (std::find(SUPPORTED_CURRENCIES.begin(), SUPPORTED_CURRENCIES.end(), opt1) == SUPPORTED_CURRENCIES.end()) {
+    else if (find(SUPPORTED_CURRENCIES.begin(), SUPPORTED_CURRENCIES.end(), opt1) == SUPPORTED_CURRENCIES.end()) {
         j["method"] = "private/get_open_orders_by_instrument";
         j["params"] = {{"instrument", opt1}};
     }
@@ -257,12 +259,12 @@ std::string api::get_open_orders(const std::string &input) {
     return j.dump();
 }
 
-std::string api::modify(const std::string &input) {
-    std::istringstream is;
+string api::modify(const string &input) {
+    istringstream is;
 
     int id;
-    std::string cmd;
-    std::string ord_id;
+    string cmd;
+    string ord_id;
     is >> id >> cmd >> ord_id;
 
     jsonrpc j;
@@ -271,11 +273,11 @@ std::string api::modify(const std::string &input) {
     int amount;
     int price;
 
-    std::cout << "Enter -1 to keep the below parameters the same\n";
+    cout << "Enter -1 to keep the below parameters the same\n";
     utils::printcmd("Enter the new price of the instrument at which you want to trade: ");
-    std::cin >> price;
+    cin >> price;
     utils::printcmd("Enter the new amount you'd like to trade: ");
-    std::cin >> amount;
+    cin >> amount;
 
     j["params"] = {{"order_id", ord_id}};
     if (amount >= 0) j["params"]["amount"] = amount;
@@ -284,11 +286,11 @@ std::string api::modify(const std::string &input) {
     return j.dump();
 }
 
-std::string api::cancel(const std::string &input) {
-    std::istringstream iss;
+string api::cancel(const string &input) {
+    istringstream iss;
     int id;
-    std::string cmd;
-    std::string ord_id;
+    string cmd;
+    string ord_id;
 
     iss >> id >> cmd >> ord_id;
     if (ord_id == "") { 
@@ -301,12 +303,12 @@ std::string api::cancel(const std::string &input) {
     return j.dump();
 }
 
-std::string api::cancel_all(const std::string &input) {
-    std::istringstream iss;
+string api::cancel_all(const string &input) {
+    istringstream iss;
     int id;
-    std::string cmd;
-    std::string option;
-    std::string label;
+    string cmd;
+    string option;
+    string label;
 
     jsonrpc j;
     j["params"] = {};
@@ -315,7 +317,7 @@ std::string api::cancel_all(const std::string &input) {
     if (option == "") { 
         j["method"] = "private/cancel_all";
     }
-    else if (std::find(SUPPORTED_CURRENCIES.begin(), SUPPORTED_CURRENCIES.end(), option) == SUPPORTED_CURRENCIES.end()) {
+    else if (find(SUPPORTED_CURRENCIES.begin(), SUPPORTED_CURRENCIES.end(), option) == SUPPORTED_CURRENCIES.end()) {
         j["method"] = "private/cancel_all_by_instrument";
         j["params"]["instrument"] = option;
     }

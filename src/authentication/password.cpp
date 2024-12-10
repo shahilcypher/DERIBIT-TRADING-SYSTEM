@@ -2,6 +2,8 @@
 #include <string>
 #include "authentication/password.h"
 
+using namespace std;
+
 int Password::num_sets = 0;  
 
 Password &Password::password() {
@@ -9,9 +11,9 @@ Password &Password::password() {
     return pwd;
 }
 
-void Password::setAccessToken(const std::string& token) {
+void Password::setAccessToken(const string& token) {
     if(num_sets > 1) {
-        std::cout << "WARNING: Access token can only be set once per session" << std::endl;
+        cout << "WARNING: Access token can only be set once per session" << endl;
         return;
     }
     access_token = token;
@@ -20,13 +22,13 @@ void Password::setAccessToken(const std::string& token) {
 
 void Password::setAccessToken(int& token) {
     if(num_sets > 1) {
-        std::cout << "WARNING: Access token can only be set once per session" << std::endl;
+        cout << "WARNING: Access token can only be set once per session" << endl;
         return;
     }
-    access_token = std::to_string(token);
+    access_token = to_string(token);
     num_sets++;
 }
 
-std::string Password::getAccessToken() const {
+string Password::getAccessToken() const {
     return access_token;
 }

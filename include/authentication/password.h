@@ -3,11 +3,13 @@
 #include <iostream>
 #include <string>
 
+using namespace std;
+
 class Password {
 
     private:
         static int num_sets;
-        std::string access_token;
+        string access_token;
         
         Password() : access_token("") {}
 
@@ -17,8 +19,8 @@ class Password {
         Password(const Password&) = delete;
         void operator=(const Password&) = delete;
 
-        void setAccessToken(const std::string& token);
+        void setAccessToken(const string& token);
         void setAccessToken(int& token);
 
-        std::string getAccessToken() const;
+        string getAccessToken() const;
 };

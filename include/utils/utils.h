@@ -2,27 +2,36 @@
 
 #include <iostream>
 #include <fmt/color.h>
+#include <fmt/core.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 #include <map>
+
+using namespace std;
 
 namespace utils {
 
     long long time_now();
 
-    std::string gen_random(const int len);
+    string gen_random(const int len);
     
-    std::string get_signature(long long timestamp, std::string nonce, std::string data, std::string clientsecret);
+    string get_signature(long long timestamp, string nonce, string data, string clientsecret);
 
-    std::string to_hex_string(const unsigned char* data, unsigned int length);
+    string to_hex_string(const unsigned char* data, unsigned int length);
 
-    std::string hmac_sha256(const std::string& key, const std::string& data);
+    string hmac_sha256(const string& key, const string& data);
 
-    std::string pretty(std::string j);
+    string pretty(string j);
 
-    std::string printmap(std::map<std::string , std::string> mpp);
+    string printmap(map<string , string> mpp);
 
-    std::string getPassword();
+    string getPassword();
 
-    void printcmd(std::string const &str);
-    void printcmd(std::string const &str, int r, int g, int b);
-    void printerr(std::string const &str);
+    void printcmd(string const &str);
+    void printcmd(string const &str, int r, int g, int b);
+    void printerr(string const &str);
+
+    int getTerminalWidth();
+    void printHeader();
+    void printHelp();
 }

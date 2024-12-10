@@ -45,7 +45,7 @@ Deribit Trading System is a high-performance order execution and management syst
 
 2. Install dependencies:
 ```bash
-brew install cmake gcc boost openssl git
+brew install cmake gcc boost openssl git readline
 ```
 
 #### Linux (Ubuntu/Debian)
@@ -57,7 +57,7 @@ sudo apt update
 
 2. Install dependencies:
 ```bash
-sudo apt install cmake gcc libboost-all-dev libssl-dev git
+sudo apt install cmake gcc libboost-all-dev libssl-dev git libreadline-dev
 ```
 
 #### Windows
