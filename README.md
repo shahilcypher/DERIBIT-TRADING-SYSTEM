@@ -13,35 +13,6 @@ Deribit Trading System is a high-performance order execution and management syst
 - Open orders management
 - Order modification and cancellation
 
-## Project Structure
-
-```sh
-
-├── include
-│   ├── api
-│   │   └── api.h
-│   ├── authentication
-│   │   └── password.h
-│   ├── json
-│   │   └── json.hpp
-│   ├── utils
-│   │   └── utils.h
-│   └── websocket
-│       └── websocket_client.h
-├── README.md
-├── setup.sh
-└── src
-    ├── api
-    │   └── api.cpp
-    ├── authentication
-    │   └── password.cpp
-    ├── main.cpp
-    ├── utils
-    │   └── utils.cpp
-    └── websocket
-        └── websocket_client.cpp
-```
-
 ## Tech Stack
 
 ![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
@@ -122,6 +93,10 @@ cmake --build .
 ```bash
 ./deribit_trader
 ```
+
+## Disclaimer
+
+This is a trading system for educational and testing purposes. Always use caution and understand the risks involved in cryptocurrency trading.
 
 ## Getting Started with Deribit
 
@@ -236,6 +211,36 @@ Deribit <id> positions <instrument> [<depth>]
 | Immediate or Cancel       | `immediate_or_cancel`   |
 
 
+## Project Structure
+
+```sh
+
+├── include # Header files
+│   ├── api
+│   │   └── api.h
+│   ├── authentication
+│   │   └── password.h
+│   ├── json
+│   │   └── json.hpp
+│   ├── utils
+│   │   └── utils.h 
+│   └── websocket
+│       └── websocket_client.h
+├── README.md
+├── setup.sh
+└── src
+    ├── main.cpp # main function (deribit trader)
+    ├── api
+    │   └── api.cpp # Implementation Deribit API's Functionality
+    ├── authentication
+    │   └── password.cpp # Authentication and Session Management Functionality
+    ├── main.cpp
+    ├── utils
+    │   └── utils.cpp # Helper functions and utils
+    └── websocket
+        └── websocket_client.cpp # websocketpp and WebSocket endpoint implementation
+```
+
 ## Contribution
 
 Contributions are welcome! Please follow these steps:
@@ -246,8 +251,6 @@ Contributions are welcome! Please follow these steps:
 
 ## License
 
-[Specify your project's license here]
+MIT License
 
-## Disclaimer
-
-This is a trading system for educational and testing purposes. Always use caution and understand the risks involved in cryptocurrency trading.
+Copyright (c) 2025 Venkatesan M
