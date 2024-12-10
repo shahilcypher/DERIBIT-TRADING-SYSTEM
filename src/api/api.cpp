@@ -13,9 +13,18 @@ using namespace std;
 using json = nlohmann::json;
 bool AUTH_SENT = false;
 vector<string> SUPPORTED_CURRENCIES = {"BTC", "ETH", "SOL", "XRP", "MATIC",
-                                                "USDC", "USDT", "JPY", "CAD", "AUD", "GBP", 
-                                                "EUR", "USD", "CHF", "BRL", "MXN", "COP", 
-                                                "CLP", "PEN", "ECS", "ARS"};
+                                        "USDC", "USDT", "JPY", "CAD", "AUD", "GBP", 
+                                        "EUR", "USD", "CHF", "BRL", "MXN", "COP", 
+                                        "CLP", "PEN", "ECS", "ARS",                              
+                                    };
+
+// Helper function to validate instrument format (example implementation)
+bool api::is_valid_instrument(const string& instrument) {
+    // Basic validation: must contain an underscore and end with -PERPETUAL
+    return instrument.find('_') != string::npos && 
+           instrument.length() > 10 && 
+           instrument.substr(instrument.length() - 10) == "-PERPETUAL";
+}
 
 string api::process(const string &input) {
 
@@ -26,7 +35,12 @@ string api::process(const string &input) {
         {"buy", api::buy},
         {"get_open_orders", api::get_open_orders},
         {"modify", api::modify},
-        {"cancel", api::cancel}
+        {"cancel", api::cancel},
+
+        {"positions", api::view_positions},
+        {"orderbook", api::get_orderbook},
+
+        {"subscribe", api::subscribe}
     };
 
     istringstream s(input.substr(8));
@@ -141,6 +155,9 @@ string api::sell(const string &input) {
     if (amount) { 
         j["params"]["amount"] = amount;
     }
+    if (price) { 
+        j["params"]["price"] = price;
+    }
     else {
         j["params"]["contracts"] = contracts;
     }
@@ -175,15 +192,17 @@ string api::buy(const string &input) {
         access_key = Password::password().getAccessToken();
     }
 
-    utils::printcmd("\nEnter the amount or contracts: ");
-    cin >> cmd;
-    if (cmd == "contracts") {
+    utils::printcmd("\nEnter 1 for contracts or 2 for amount: ");
+    int choice;
+    cin >> choice;
+    
+    if (choice == 1) {
+        utils::printcmd("Enter the number of contracts: ");
         cin >> contracts;
-    }
-    else if (cmd == "amount") {
+    } else if (choice == 2) {
+        utils::printcmd("Enter the amount: ");
         cin >> amount;
-    }
-    else {
+    } else {
         utils::printerr("\nIncorrect syntax; couldn't place order\n");
         return "";
     }
@@ -218,6 +237,9 @@ string api::buy(const string &input) {
                    {"access_token", access_key}};
     if (amount) { 
         j["params"]["amount"] = amount;
+    }
+    if (price) { 
+        j["params"]["price"] = price;
     }
     else {
         j["params"]["contracts"] = contracts;
@@ -260,51 +282,62 @@ string api::get_open_orders(const string &input) {
 }
 
 string api::modify(const string &input) {
-    istringstream is;
+    istringstream is(input);
 
     int id;
     string cmd;
     string ord_id;
+    
+    // Correctly parse the input
     is >> id >> cmd >> ord_id;
+
+    if (ord_id.empty()) {
+        utils::printerr("Error: Order ID is required\n");
+        return "";
+    }
 
     jsonrpc j;
     j["method"] = "private/edit";
 
-    int amount;
-    int price;
+    int amount = -1;
+    int price = -1;
 
-    cout << "Enter -1 to keep the below parameters the same\n";
-    utils::printcmd("Enter the new price of the instrument at which you want to trade: ");
+    // Use utility function to prompt for input
+    utils::printcmd("Enter -1 to keep the below parameters the same\n");
+    utils::printcmd("Enter the new price of the instrument at which you want to trade (-1 to keep current): ");
     cin >> price;
-    utils::printcmd("Enter the new amount you'd like to trade: ");
+    utils::printcmd("Enter the new amount you'd like to trade (-1 to keep current): ");
     cin >> amount;
 
     j["params"] = {{"order_id", ord_id}};
-    if (amount >= 0) j["params"]["amount"] = amount;
-    if (price >= 0) j["params"]["price"] = price;
+    
+    // Only add parameters that are not -1
+    if (amount != -1) j["params"]["amount"] = amount;
+    if (price != -1) j["params"]["price"] = price;
 
     return j.dump();
 }
 
 string api::cancel(const string &input) {
-    istringstream iss;
+    istringstream iss(input);
     int id;
     string cmd;
     string ord_id;
 
     iss >> id >> cmd >> ord_id;
-    if (ord_id == "") { 
+    if (ord_id.empty()) { 
         utils::printerr("Order ID cannot be blank. If you want to cancel all orders, use cancel_all instead.");
+        return "";
     }
 
-    jsonrpc j("private/cancel");
-
+    jsonrpc j;
+    j["method"] = "private/cancel";
     j["params"]["order_id"] = ord_id;
     return j.dump();
 }
 
 string api::cancel_all(const string &input) {
-    istringstream iss;
+    istringstream iss(input);
     int id;
     string cmd;
     string option;
@@ -314,7 +347,7 @@ string api::cancel_all(const string &input) {
     j["params"] = {};
 
     iss >> id >> cmd >> option >> label;
-    if (option == "") { 
+    if (option.empty()) { 
         j["method"] = "private/cancel_all";
     }
     else if (find(SUPPORTED_CURRENCIES.begin(), SUPPORTED_CURRENCIES.end(), option) == SUPPORTED_CURRENCIES.end()) {
@@ -330,5 +363,74 @@ string api::cancel_all(const string &input) {
         j["params"]["currency"] = option;
     }
     
+    return j.dump();
+}
+
+string api::view_positions(const string &input) {
+    istringstream is(input);
+    int id;
+    string cmd;
+    string instrument; // Optional: filter by specific instrument
+
+    is >> id >> cmd >> instrument;
+
+    // Optional: validate instrument format if needed
+    if (!instrument.empty() && !is_valid_instrument(instrument)) {
+        utils::printerr("Invalid instrument format\n");
+        return "";
+    }
+
+    jsonrpc j;
+    j["method"] = "private/get_positions";
+    
+    if (!instrument.empty()) {
+        j["params"]["instrument_name"] = instrument;
+    }
+
+    return j.dump();
+}
+
+string api::get_orderbook(const string &input) {
+    istringstream is(input);
+    int id;
+    string cmd;
+    string instrument;
+    int depth = 10; // Default depth
+
+    is >> id >> cmd >> instrument;
+    
+    // Validate instrument is not empty
+    if (instrument.empty()) {
+        utils::printerr("Instrument name is required\n");
+        return "";
+    }
+
+    // Optional: validate instrument format if needed
+    if (!is_valid_instrument(instrument)) {
+        utils::printerr("Invalid instrument format\n");
+        return "";
+    }
+    
+    // Optional: allow specifying depth
+    if (is >> depth) {
+        depth = max(1, min(depth, 50)); // Limit depth between 1-50
+    }
+
+    jsonrpc j;
+    j["method"] = "public/get_orderbook";
+    j["params"] = {
+        {"instrument_name", instrument},
+        {"depth", depth}
+    };
+
+    return j.dump();
+}
+
+string api::subscribe(const string &input) {
+
+
+    jsonrpc j;
+    j["method"] = "public/subscribe";
+
     return j.dump();
 }

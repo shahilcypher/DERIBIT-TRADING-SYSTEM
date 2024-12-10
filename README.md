@@ -13,6 +13,35 @@ Deribit Trading System is a high-performance order execution and management syst
 - Open orders management
 - Order modification and cancellation
 
+## Project Structure
+
+```sh
+
+├── include
+│   ├── api
+│   │   └── api.h
+│   ├── authentication
+│   │   └── password.h
+│   ├── json
+│   │   └── json.hpp
+│   ├── utils
+│   │   └── utils.h
+│   └── websocket
+│       └── websocket_client.h
+├── README.md
+├── setup.sh
+└── src
+    ├── api
+    │   └── api.cpp
+    ├── authentication
+    │   └── password.cpp
+    ├── main.cpp
+    ├── utils
+    │   └── utils.cpp
+    └── websocket
+        └── websocket_client.cpp
+```
+
 ## Tech Stack
 
 ![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
@@ -109,16 +138,19 @@ cmake --build .
 
 #### Basic Commands
 
-- `help`: Show all supported commands
-- `quit`: Close WebSocket connections and exit
+- `help / man`: Show all supported commands
+- `quit / exit`: Close WebSocket connections and exit
+- `close <id> [code] [reason]` : Closes the connection with the given id; optional: specify exit code and/or reason
+- `connect <URI>` : Creates a connection with the given URI
 - `show <id>`: Get connection metadata
 - `send <id> msg`: Send message to specific connection
 - `show_messages <id>`: View message exchanges
+- `send <id> <message>`: Sends the message to the specified connection
 
 #### Deribit API Commands
 
 1. Connect to Testnet:
-
+Creates a new connection to the Deribit testnet website
 ```sh
 Deribit connect
 ```
@@ -128,6 +160,7 @@ connect wss://test.deribit.com/ws/api/v2
 ```
 
 2. Authenticate:
+Sends the authorization message to retrieve the access token; optional: use -r to remember the token for the session
 ```bash
 Deribit <id> authorize <connection_id> <client_id> <client_secret> [-r]
 ```
@@ -135,48 +168,73 @@ Deribit <id> authorize <connection_id> <client_id> <client_secret> [-r]
 #### Trading Commands
 
 1. Buy Order:
+ Places a buy order for the specified instrument
 ```bash
 Deribit <id> buy <instrument> <transaction_name>
 ```
 
 2. Sell Order:
+ Places a sell order for the specified instrument
 ```bash
 Deribit <id> sell <instrument> <transaction_name>
 ```
 
 3. Get Open Orders:
+ Fetches all open orders with optional filters
 ```bash
 Deribit <id> get_open_orders [<currency>] [<instrument>] [<label>]
 ```
 
 4. Modify Order:
+ Modifies the price or amount of an active order
 ```bash
 Deribit <id> modify <order_id>
 ```
 
 5. Cancel Order:
+ Cancels the specified order
 ```bash
 Deribit <id> cancel <order_id>
 Deribit <id> cancel_all [<options>]
 ```
 
-## Order Types Supported
+6. View Positions:
+ Fetches all your current open positions; optional: use instrument to be specific
+```bash
+Deribit <id> positions [<instrument>]
+```
 
-- Limit
-- Stop Limit
-- Take Limit
-- Market
-- Stop Market
-- Take Market
-- Market Limit
-- Trailing Stop
+7. Get OrderBook:
+Fetches all current buy and sell orders for the specified instrument; optional: specify depth of search
+```bash
+Deribit <id> positions <instrument> [<depth>]
+```
+
+## Supported Order Types
+
+| **Order Type**      | **Flag**        |
+|---------------------|-----------------|
+| Limit               | `limit`         |
+| Stop Limit          | `stop_limit`    |
+| Take Limit          | `take_limit`    |
+| Market              | `market`        |
+| Stop Market         | `stop_market`   |
+| Take Market         | `take_market`   |
+| Market Limit        | `market_limit`  |
+| Trailing Stop       | `trailing_stop` |
+
+
+
 
 ## Time in Force Options
 
-- Good Till Cancelled
-- Good Till Day
-- Fill or Kill
-- Immediate or Cancel
+| **Option**                | **Flag**                |
+|---------------------------|-------------------------|
+| Good Till Cancelled       | `good_til_cancelled`    |
+| Good Till Day             | `good_til_day`         |
+| Fill or Kill              | `fill_or_kill`          |
+| Immediate or Cancel       | `immediate_or_cancel`   |
+
 
 ## Contribution
 

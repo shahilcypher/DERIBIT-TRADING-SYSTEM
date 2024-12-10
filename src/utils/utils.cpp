@@ -71,7 +71,12 @@ void utils::printHelp() {
                               "Fetches all open orders with optional filters")
               << fmt::format("  {:<30} : {}\n", "> Deribit <id> modify <order_id>",
                               "Modifies the price or amount of an active order")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> cancel <order_id>", "Cancels the specified order")
+              << fmt::format("  {:<30} : {}\n", "> Deribit <id> cancel <order_id>", 
+                              "Cancels the specified order")
+              << fmt::format("  {:<30} : {}\n", "> Deribit <id> positions [optional instrument]", 
+                              "Fetches all your current open positions; optional: use instrument to be specific")
+              << fmt::format("  {:<30} : {}\n", "> Deribit <id> orderbook <instrument> [optional depth]", 
+                              "Fetches all current buy and sell orders for the specified instrument; optional: specify depth of search")
               << "\n";
 
     std::cout << separator << "\n\n";

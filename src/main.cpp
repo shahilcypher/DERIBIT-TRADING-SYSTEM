@@ -44,7 +44,7 @@ int main() {
         if (command == "quit" || command == "exit") {
             done = true;
         } 
-        else if (command == "help") {
+        else if (command == "help" || command == "man") {
             utils::printHelp();
         }
         else if (command.substr(0, 7) == "connect") {

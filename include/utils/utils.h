@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <map>
 
+
 using namespace std;
 
 namespace utils {
@@ -34,4 +35,5 @@ namespace utils {
     int getTerminalWidth();
     void printHeader();
     void printHelp();
+
 }

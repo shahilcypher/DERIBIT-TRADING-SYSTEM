@@ -32,6 +32,10 @@ class jsonrpc : public json {
 
 namespace api {
 
+    bool is_valid_instrument(const string& instrument);
+
+    int kbhit();
+    
     string process(const string &input);
 
     string authorize(const string &cmd);
@@ -47,4 +51,10 @@ namespace api {
     string cancel(const string &input);
 
     string cancel_all(const string &input);
+
+    string view_positions(const string &input);
+
+    string get_orderbook(const string &input);
+
+    string subscribe(const string &input);
 }
