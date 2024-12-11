@@ -2,6 +2,9 @@
 
 ## Overview
 
+![image](https://github.com/user-attachments/assets/4cc060ac-5168-40a2-a2a0-9639cc7855fb)
+
+
 Deribit Trading System is a high-performance order execution and management system that operates through a command-line interface. It uses a WebSocket client to connect to the Deribit TESTNET and manage trading portfolios with advanced functionality.
 
 ## Features
@@ -103,6 +106,9 @@ This is a trading system for educational and testing purposes. Always use cautio
 ### Account Setup
 
 1. Create an account on [Deribit Testnet](https://test.deribit.com)
+
+![image](https://github.com/user-attachments/assets/cffeae56-da67-4aa5-a7cc-ab4f5db13b88)
+
 2. Generate API Keys:
    - Navigate to Account Settings
    - Create API Key
@@ -240,6 +246,13 @@ Deribit <id> positions <instrument> [<depth>]
     └── websocket
         └── websocket_client.cpp # websocketpp and WebSocket endpoint implementation
 ```
+
+## Development
+
+![image](https://github.com/user-attachments/assets/a5d8aee6-9b40-4b07-ac2f-852b595fe12e)
+
+1. you are free to develop more feature on this, just refer the new [DERIBIT API DOCS](https://docs.deribit.com/)
+2. Test the API Call on [Deribit API Console](https://test.deribit.com/api_console)
 
 ## Contribution
 
