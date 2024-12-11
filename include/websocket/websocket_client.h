@@ -10,6 +10,8 @@
 #include <condition_variable>
 #include <vector>
 #include <functional>
+#include <thread>
+#include <atomic>
 
 #include <websocketpp/config/asio_client.hpp> 
 #include <boost/asio.hpp>
@@ -40,6 +42,11 @@ private:
     string m_error_reason;
     vector<string> m_summaries;
 
+    // New streaming-related members
+    function<void(const std::string&)> m_stream_callback;
+    thread m_streaming_thread;
+    atomic<bool> m_is_streaming{false};
+
 public:
     typedef websocketpp::lib::shared_ptr<connection_metadata> ptr;
 
@@ -62,6 +69,14 @@ public:
     void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg);
 
     friend ostream &operator<< (ostream &out, connection_metadata const &data);
+
+    // New methods for streaming
+    void start_streaming(std::function<void(const std::string&)> callback);
+    void stop_streaming();
+    bool is_streaming() const;
+
+    // Method to process streaming messages
+    void stream_messages();
 };
 
 context_ptr on_tls_init();
@@ -85,8 +100,8 @@ public:
     void close(int id, websocketpp::close::status::value code, string reason);
     int send(int id, string message);
 
-    int subscribe_market_data(int connection_id, const vector<string>& instruments);
-    int unsubscribe_market_data(int connection_id, const vector<string>& instruments);
+    bool is_connection_streaming(int id) const;
+
 };
 
 #endif // WEBSOCKET_CLIENT_H

@@ -33,8 +33,6 @@ class jsonrpc : public json {
 namespace api {
 
     bool is_valid_instrument(const string& instrument);
-
-    int kbhit();
     
     string process(const string &input);
 

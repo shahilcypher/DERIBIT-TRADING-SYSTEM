@@ -138,7 +138,7 @@ int main() {
             // Process Deribit-specific API commands
             int id; 
             string cmd;
-
+        
             stringstream ss(command);
             ss >> cmd >> id;
             
@@ -146,9 +146,60 @@ int main() {
             if (msg != "") {
                 int success = endpoint.send(id, msg);
                 if (success >= 0) {
-                    unique_lock<mutex> lock(endpoint.get_metadata(id)->mtx);
-                    endpoint.get_metadata(id)->cv.wait(lock, [&] { return endpoint.get_metadata(id)->MSG_PROCESSED; });
-                    endpoint.get_metadata(id)->MSG_PROCESSED = false;
+                    // If it's a subscribe command, enter streaming mode
+                    if (command.find("subscribe") != string::npos) {
+                        fmt::print(fg(fmt::color::green), "> Streaming real-time data. Press 'q' to stop.\n");
+                        
+                        // Streaming loop
+                        while (true) {
+                            // Wait for a message with a timeout
+                            unique_lock<mutex> lock(endpoint.get_metadata(id)->mtx);
+                            bool data_received = endpoint.get_metadata(id)->cv.wait_for(
+                                lock, 
+                                chrono::seconds(5), 
+                                [&] { return endpoint.get_metadata(id)->MSG_PROCESSED; }
+                            );
+        
+                            // Check if user wants to quit
+                            input = readline("");
+                            if (input && (strcmp(input, "q") == 0 || strcmp(input, "Q") == 0)) {
+                                free(input);
+                                break;
+                            }
+                            
+                            // Process received messages
+                            if (data_received) {
+                                for (const auto& msg : endpoint.get_metadata(id)->m_messages) {
+                                    try {
+                                        json parsed_msg = json::parse(msg);
+                                        
+                                        // Check if it's a subscription result or data
+                                        if (parsed_msg.contains("result")) {
+                                            fmt::print(fg(fmt::color::yellow), "Subscription Confirmed: {}\n", 
+                                                       parsed_msg["result"].dump(2));
+                                        } else if (parsed_msg.contains("params") && 
+                                                   parsed_msg["params"].contains("data")) {
+                                            fmt::print(fg(fmt::color::green), "Received Data: {}\n", 
+                                                       parsed_msg["params"]["data"].dump(2));
+                                        }
+                                    } catch (const json::parse_error& e) {
+                                        fmt::print(fg(fmt::color::red), "Error parsing message: {}\n", e.what());
+                                    }
+                                }
+                                
+                                // Clear processed messages
+                                endpoint.get_metadata(id)->m_messages.clear();
+                                endpoint.get_metadata(id)->MSG_PROCESSED = false;
+                            }
+                        }
+                        
+                        fmt::print(fg(fmt::color::yellow), "> Subscription stream stopped.\n");
+                    } else {
+                        // For non-subscribe commands, wait for message processing as before
+                        unique_lock<mutex> lock(endpoint.get_metadata(id)->mtx);
+                        endpoint.get_metadata(id)->cv.wait(lock, [&] { return endpoint.get_metadata(id)->MSG_PROCESSED; });
+                        endpoint.get_metadata(id)->MSG_PROCESSED = false;
+                    }
                 }
             }
         }
