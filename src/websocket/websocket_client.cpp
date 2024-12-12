@@ -2,6 +2,7 @@
 #include "utils/utils.h"
 #include "authentication/password.h"
 #include <fmt/color.h>
+#include "latency/tracker.h"
 
 using namespace std;
 
@@ -118,6 +119,12 @@ void connection_metadata::on_close(client * c, websocketpp::connection_hdl hdl) 
 }
 
 void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+
+    getLatencyTracker().start_measurement(
+        LatencyTracker::WEBSOCKET_MESSAGE_PROPAGATION, 
+        "websocket_message_" + std::to_string(m_id)
+    );
+
     if (msg->get_opcode() == websocketpp::frame::opcode::text) {
         m_messages.push_back("RECEIVED: " + msg->get_payload());
         record_summary(msg->get_payload(), "RECEIVED");
@@ -145,71 +152,11 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
     }
     MSG_PROCESSED = true;
     cv.notify_one();
-}
 
-void connection_metadata::start_streaming(std::function<void(const std::string&)> callback) {
-    // Prevent multiple streaming threads
-    if (m_is_streaming) {
-        return;
-    }
-
-    // Set streaming flag and callback
-    m_is_streaming = true;
-    m_stream_callback = callback;
-
-    // Start streaming thread
-    m_streaming_thread = std::thread(&connection_metadata::stream_messages, this);
-}
-
-void connection_metadata::stop_streaming() {
-    // Stop streaming
-    m_is_streaming = false;
-
-    // Wait for streaming thread to finish
-    if (m_streaming_thread.joinable()) {
-        m_streaming_thread.join();
-    }
-
-    // Clear callback
-    m_stream_callback = nullptr;
-}
-
-bool connection_metadata::is_streaming() const {
-    return m_is_streaming;
-}
-
-void connection_metadata::stream_messages() {
-    while (m_is_streaming) {
-        // Wait for messages with a timeout
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait_for(lock, std::chrono::milliseconds(500), [this]() { 
-                return MSG_PROCESSED; 
-            });
-
-            // Process messages if available
-            if (MSG_PROCESSED && !m_messages.empty()) {
-                for (const auto& msg : m_messages) {
-                    // Call streaming callback if set
-                    if (m_stream_callback) {
-                        try {
-                            m_stream_callback(msg);
-                        } catch (const std::exception& e) {
-                            // Optional: error handling for callback
-                            std::cerr << "Streaming callback error: " << e.what() << std::endl;
-                        }
-                    }
-                }
-
-                // Clear processed messages
-                m_messages.clear();
-                MSG_PROCESSED = false;
-            }
-        }
-
-        // Small sleep to prevent tight looping
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
+    getLatencyTracker().stop_measurement(
+        LatencyTracker::WEBSOCKET_MESSAGE_PROPAGATION, 
+        "websocket_message_" + std::to_string(m_id)
+    );
 }
 
 ostream &operator<< (ostream &out, connection_metadata const &data) {

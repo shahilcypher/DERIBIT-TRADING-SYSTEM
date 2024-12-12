@@ -38,6 +38,7 @@ add_executable(deribit_trader
     src/utils/utils.cpp
     src/main.cpp
     src/websocket/websocket_client.cpp
+    src/latency/tracker.cpp
 )
 
 # Add include directories

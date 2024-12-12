@@ -11,6 +11,8 @@
 #include "utils/utils.h"
 #include "authentication/password.h"
 
+#include "latency/tracker.h"
+
 using namespace std;
 
 int main() {
@@ -69,12 +71,37 @@ int main() {
         }
         else if (command.substr(0, 13) == "show_messages") {
             // Show messages for a specific connection
-            int id = atoi(command.substr(14).c_str());
- 
-            connection_metadata::ptr metadata = endpoint.get_metadata(id);
-            for (const auto& msg : metadata->m_messages) {
-                cout << msg << "\n\n";
+            stringstream ss(command);
+            string cmd;
+            int id;
+
+            ss >> cmd >> id;
+
+            if (ss.fail()) {
+                fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, 
+                           "Error: Missing connection ID. Usage: show_messages <connection_id>\n");
+            } else {
+                connection_metadata::ptr metadata = endpoint.get_metadata(id);
+
+                if (metadata) {
+                    if (metadata->m_messages.empty()) {
+                        fmt::print(fg(fmt::color::yellow), "> No messages for connection {}\n", id);
+                    } else {
+                        for (const auto& msg : metadata->m_messages) {
+                            cout << msg << "\n\n";
+                        }
+                    }
+                } else {
+                    fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, 
+                               "> Unknown connection id {}\n", id);
+                }
             }
+        }
+        else if (command.substr(0, 14) == "latency_report") {
+            cout << getLatencyTracker().generate_report() << endl;
+        }
+        else if (command.substr(0, 12) == "reset_report") {
+            getLatencyTracker().reset();
         }
         else if (command.substr(0, 4) == "show") {
             // Show metadata for a specific connection
@@ -146,60 +173,9 @@ int main() {
             if (msg != "") {
                 int success = endpoint.send(id, msg);
                 if (success >= 0) {
-                    // If it's a subscribe command, enter streaming mode
-                    if (command.find("subscribe") != string::npos) {
-                        fmt::print(fg(fmt::color::green), "> Streaming real-time data. Press 'q' to stop.\n");
-                        
-                        // Streaming loop
-                        while (true) {
-                            // Wait for a message with a timeout
-                            unique_lock<mutex> lock(endpoint.get_metadata(id)->mtx);
-                            bool data_received = endpoint.get_metadata(id)->cv.wait_for(
-                                lock, 
-                                chrono::seconds(5), 
-                                [&] { return endpoint.get_metadata(id)->MSG_PROCESSED; }
-                            );
-        
-                            // Check if user wants to quit
-                            input = readline("");
-                            if (input && (strcmp(input, "q") == 0 || strcmp(input, "Q") == 0)) {
-                                free(input);
-                                break;
-                            }
-                            
-                            // Process received messages
-                            if (data_received) {
-                                for (const auto& msg : endpoint.get_metadata(id)->m_messages) {
-                                    try {
-                                        json parsed_msg = json::parse(msg);
-                                        
-                                        // Check if it's a subscription result or data
-                                        if (parsed_msg.contains("result")) {
-                                            fmt::print(fg(fmt::color::yellow), "Subscription Confirmed: {}\n", 
-                                                       parsed_msg["result"].dump(2));
-                                        } else if (parsed_msg.contains("params") && 
-                                                   parsed_msg["params"].contains("data")) {
-                                            fmt::print(fg(fmt::color::green), "Received Data: {}\n", 
-                                                       parsed_msg["params"]["data"].dump(2));
-                                        }
-                                    } catch (const json::parse_error& e) {
-                                        fmt::print(fg(fmt::color::red), "Error parsing message: {}\n", e.what());
-                                    }
-                                }
-                                
-                                // Clear processed messages
-                                endpoint.get_metadata(id)->m_messages.clear();
-                                endpoint.get_metadata(id)->MSG_PROCESSED = false;
-                            }
-                        }
-                        
-                        fmt::print(fg(fmt::color::yellow), "> Subscription stream stopped.\n");
-                    } else {
-                        // For non-subscribe commands, wait for message processing as before
-                        unique_lock<mutex> lock(endpoint.get_metadata(id)->mtx);
-                        endpoint.get_metadata(id)->cv.wait(lock, [&] { return endpoint.get_metadata(id)->MSG_PROCESSED; });
-                        endpoint.get_metadata(id)->MSG_PROCESSED = false;
-                    }
+                    unique_lock<mutex> lock(endpoint.get_metadata(id)->mtx);
+                    endpoint.get_metadata(id)->cv.wait(lock, [&] { return endpoint.get_metadata(id)->MSG_PROCESSED; });
+                    endpoint.get_metadata(id)->MSG_PROCESSED = false;
                 }
             }
         }

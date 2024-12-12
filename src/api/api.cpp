@@ -9,6 +9,10 @@
 #include <vector>
 #include <functional>
 #include <regex>
+#include <set>
+
+
+#include "latency/tracker.h"
 
 using namespace std;
 
@@ -37,6 +41,7 @@ string api::process(const string &input) {
         {"get_open_orders", api::get_open_orders},
         {"modify", api::modify},
         {"cancel", api::cancel},
+        {"cancel_all", api::cancel_all},
 
         {"positions", api::view_positions},
         {"orderbook", api::get_orderbook},
@@ -199,6 +204,9 @@ string api::sell(const string &input) {
         cin >> price;
     }
 
+    getLatencyTracker().start_measurement(LatencyTracker::ORDER_PLACEMENT);
+
+
     jsonrpc j("private/sell");
 
     j["params"] = {{"instrument_name", instrument},
@@ -223,6 +231,8 @@ string api::sell(const string &input) {
     j["params"]["type"] = order_type;
     j["params"]["label"] = label;
     j["params"]["time_in_force"] = frc;
+
+    getLatencyTracker().stop_measurement(LatencyTracker::ORDER_PLACEMENT);
 
     return j.dump();
 }
@@ -338,6 +348,9 @@ string api::buy(const string &input) {
         cin >> price;
     }
 
+    getLatencyTracker().start_measurement(LatencyTracker::ORDER_PLACEMENT);
+
+
     jsonrpc j("private/buy");
 
     j["params"] = {{"instrument_name", instrument},
@@ -363,37 +376,8 @@ string api::buy(const string &input) {
     j["params"]["label"] = label;
     j["params"]["time_in_force"] = frc;
 
-    return j.dump();
-}
+    getLatencyTracker().stop_measurement(LatencyTracker::ORDER_PLACEMENT);
 
-
-string api::get_open_orders(const string &input) {
-    istringstream is(input);
-
-    int id;
-    string cmd;
-    string opt1;
-    string opt2;
-    is >> id >> cmd >> opt1 >> opt2;
-
-    jsonrpc j;
-
-    if (opt1 == "") {
-        j["method"] = "private/get_open_orders";
-    }
-    else if (find(SUPPORTED_CURRENCIES.begin(), SUPPORTED_CURRENCIES.end(), opt1) == SUPPORTED_CURRENCIES.end()) {
-        j["method"] = "private/get_open_orders_by_instrument";
-        j["params"] = {{"instrument", opt1}};
-    }
-    else if ( opt2 == "" ) {
-        j["method"] = "private/get_open_orders_by_currency";
-        j["params"] = {{"currency", opt1}};
-    }
-    else {
-        j["method"] = "private/get_open_orders_by_label";
-        j["params"] = {{"currency", opt1},
-                        {"label", opt2}};
-    }
     return j.dump();
 }
 
@@ -423,11 +407,16 @@ string api::modify(const string &input) {
     utils::printcmd("Enter the new amount (-1 to keep current): ");
     cin >> amount;
 
+    getLatencyTracker().start_measurement(LatencyTracker::ORDER_PLACEMENT);
+
+
     j["params"] = {{"order_id", ord_id}};
     
     // Only add parameters that are not -1
     if (amount > 0) j["params"]["amount"] = amount;
     if (price > 0) j["params"]["price"] = price;
+
+    getLatencyTracker().stop_measurement(LatencyTracker::ORDER_PLACEMENT);
 
     return j.dump();
 }
@@ -444,9 +433,13 @@ string api::cancel(const string &input) {
         return "";
     }
 
+    getLatencyTracker().start_measurement(LatencyTracker::ORDER_PLACEMENT);
+
     jsonrpc j;
     j["method"] = "private/cancel";
     j["params"]["order_id"] = ord_id;
+
+    getLatencyTracker().stop_measurement(LatencyTracker::ORDER_PLACEMENT);
     return j.dump();
 }
 
@@ -456,6 +449,8 @@ string api::cancel_all(const string &input) {
     string cmd;
     string option;
     string label;
+
+    getLatencyTracker().start_measurement(LatencyTracker::ORDER_PLACEMENT);
 
     jsonrpc j;
     j["params"] = {};
@@ -476,35 +471,98 @@ string api::cancel_all(const string &input) {
         j["method"] = "private/cancel_all_by_currency";
         j["params"]["currency"] = option;
     }
+
+    getLatencyTracker().stop_measurement(LatencyTracker::ORDER_PLACEMENT);
     
+    return j.dump();
+}
+
+string api::get_open_orders(const string &input) {
+
+    getLatencyTracker().start_measurement(LatencyTracker::MARKET_DATA_PROCESSING);
+
+    istringstream is(input);
+
+    int id;
+    string cmd;
+    string opt1;
+    string opt2;
+    is >> id >> cmd >> opt1 >> opt2;
+
+    jsonrpc j;
+
+    if (opt1 == "") {
+        j["method"] = "private/get_open_orders";
+    }
+    else if (find(SUPPORTED_CURRENCIES.begin(), SUPPORTED_CURRENCIES.end(), opt1) == SUPPORTED_CURRENCIES.end()) {
+        j["method"] = "private/get_open_orders_by_instrument";
+        j["params"] = {{"instrument", opt1}};
+    }
+    else if ( opt2 == "" ) {
+        j["method"] = "private/get_open_orders_by_currency";
+        j["params"] = {{"currency", opt1}};
+    }
+    else {
+        j["method"] = "private/get_open_orders_by_label";
+        j["params"] = {{"currency", opt1},
+                        {"label", opt2}};
+    }
+
+    getLatencyTracker().stop_measurement(LatencyTracker::MARKET_DATA_PROCESSING);
+
     return j.dump();
 }
 
 string api::view_positions(const string &input) {
+    getLatencyTracker().start_measurement(LatencyTracker::MARKET_DATA_PROCESSING);
     istringstream is(input);
     int id;
     string cmd;
-    string instrument; // Optional: filter by specific instrument
-
-    is >> id >> cmd >> instrument;
-
-    // Optional: validate instrument format if needed
-    if (!instrument.empty() && !is_valid_instrument(instrument)) {
-        utils::printerr("Invalid instrument format\n");
-        return "";
+    string currency; // Currency filter
+    string kind;     // Instrument kind filter
+    is >> id >> cmd >> currency >> kind;
+    
+    // Inline validation for currency
+    if (!currency.empty()) {
+        static const set<string> valid_currencies = {
+            "BTC", "ETH", "USDC", "USDT", "EURR"
+        };
+        if (valid_currencies.find(currency) == valid_currencies.end()) {
+            utils::printerr("Invalid currency format\n");
+            return "";
+        }
     }
-
+    
+    // Inline validation for kind
+    if (!kind.empty()) {
+        static const set<string> valid_kinds = {
+            "future", "option", "spot", 
+            "future_combo", "option_combo"
+        };
+        if (valid_kinds.find(kind) == valid_kinds.end()) {
+            utils::printerr("Invalid instrument kind\n");
+            return "";
+        }
+    }
+    
     jsonrpc j;
     j["method"] = "private/get_positions";
     
-    if (!instrument.empty()) {
-        j["params"]["instrument_name"] = instrument;
+    // Add optional filters if provided
+    if (!currency.empty()) {
+        j["params"]["currency"] = currency;
     }
-
+    
+    if (!kind.empty()) {
+        j["params"]["kind"] = kind;
+    }
+    
+    getLatencyTracker().stop_measurement(LatencyTracker::MARKET_DATA_PROCESSING);
     return j.dump();
 }
 
 string api::get_orderbook(const string &input) {
+    getLatencyTracker().start_measurement(LatencyTracker::MARKET_DATA_PROCESSING);
     istringstream is(input);
     int id;
     string cmd;
@@ -536,7 +594,7 @@ string api::get_orderbook(const string &input) {
         {"instrument_name", instrument},
         {"depth", depth}
     };
-
+    getLatencyTracker().stop_measurement(LatencyTracker::MARKET_DATA_PROCESSING);
     return j.dump();
 }
 

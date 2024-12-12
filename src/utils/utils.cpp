@@ -51,32 +51,44 @@ void utils::printHelp() {
     std::cout << "GENERAL COMMANDS:\n"
               << fmt::format("  {:<30} : {}\n", "> help", "Displays this help text")
               << fmt::format("  {:<30} : {}\n", "> quit / exit", "Exits the program")
-              << fmt::format("  {:<30} : {}\n", "> connect <URI>", "Creates a connection with the given URI")
+              << fmt::format("  {:<30} : {}\n", "> connect <URI>", "Creates a WebSocket connection with the given URI")
               << fmt::format("  {:<30} : {}\n", "> close <id> [code] [reason]",
-                              "Closes the connection with the given id; optional: specify exit code and/or reason")
-              << fmt::format("  {:<30} : {}\n", "> show <id>", "Gets metadata of the connection with the given id")
-              << fmt::format("  {:<30} : {}\n", "> show_messages <id>", "Displays all messages sent and received on the connection with id")
-              << fmt::format("  {:<30} : {}\n", "> send <id> <message>", "Sends the message to the specified connection")
+                              "Closes the WebSocket connection with the specified ID; optionally specify exit code and reason")
+              << fmt::format("  {:<30} : {}\n", "> show <id>", "Displays metadata for the specified connection")
+              << fmt::format("  {:<30} : {}\n", "> show_messages <id>", "Lists all messages sent and received on the specified connection")
+              << fmt::format("  {:<30} : {}\n", "> send <id> <message>", "Sends a message to the specified connection")
+              << fmt::format("  {:<30} : {}\n", "> latency_report", "Generates a performance latency report for the current session")
+              << fmt::format("  {:<30} : {}\n", "> reset_report", "Clears the latency report data for the current session")
               << "\n";
 
-    std::cout << "DERIBIT API COMMANDS:\n"
-              << fmt::format("  {:<30} : {}\n", "> Deribit connect", "Creates a new connection to the Deribit testnet website")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> authorize <client_id> <client_secret> [-r]",
-                              "Sends the authorization message to retrieve the access token; optional: use -r to remember the token for the session")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> buy <instrument> [comments]",
-                              "Places a buy order for the specified instrument")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> sell <instrument> [comments]",
-                              "Places a sell order for the specified instrument")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> get_open_orders {options}",
-                              "Fetches all open orders with optional filters")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> modify <order_id>",
-                              "Modifies the price or amount of an active order")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> cancel <order_id>", 
-                              "Cancels the specified order")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> positions [optional instrument]", 
-                              "Fetches all your current open positions; optional: use instrument to be specific")
-              << fmt::format("  {:<30} : {}\n", "> Deribit <id> orderbook <instrument> [optional depth]", 
-                              "Fetches all current buy and sell orders for the specified instrument; optional: specify depth of search")
+    std::cout << "DERIBIT API COMMANDS:\n\n"
+              << "  Connection and Authentication:\n"
+              << fmt::format("  {:<60} : {}\n", "> Deribit connect", 
+                              "Establish a new WebSocket connection to Deribit's testnet")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> authorize <client_id> <client_secret> [-r]", 
+                              "Authenticate and retrieve an access token; use -r to persist token in session")
+              << "\n"
+              
+              << "  Order Management:\n"
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> buy <instrument> [comments]", 
+                              "Place a buy market or limit order for the specified instrument")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> sell <instrument> [comments]", 
+                              "Place a sell market or limit order for the specified instrument")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> modify <order_id>", 
+                              "Update price or quantity of an active order")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> cancel <order_id>", 
+                              "Cancel a specific order by its order ID")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> cancel_all", 
+                              "Cancel all active orders for the current account")
+              << "\n"
+              
+              << "  Information Retrieval:\n"
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> get_open_orders {options}", 
+                              "Retrieve open orders with optional filtering")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> positions [currency] [kind]", 
+                              "Fetch current open positions, optionally filtered by currency or instrument type")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> orderbook <instrument> [depth]", 
+                              "View current buy and sell orders for an instrument, with optional depth limit")
               << "\n";
 
     std::cout << separator << "\n\n";

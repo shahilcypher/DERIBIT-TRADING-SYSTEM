@@ -127,6 +127,8 @@ This is a trading system for educational and testing purposes. Always use cautio
 - `send <id> msg`: Send message to specific connection
 - `show_messages <id>`: View message exchanges
 - `send <id> <message>`: Sends the message to the specified connection
+- `latency_report` : Generates a latency report of the current session
+- `reset_report` : Delete's the data of the latency report of the current session
 
 #### Deribit API Commands
 
@@ -176,13 +178,16 @@ Deribit <id> modify <order_id>
  Cancels the specified order
 ```bash
 Deribit <id> cancel <order_id>
-Deribit <id> cancel_all [<options>]
+```
+Cancell all orders
+```sh
+Deribit <id> cancel_all
 ```
 
 6. View Positions:
- Fetches all your current open positions; optional: use instrument to be specific
+ Fetches all your current open positions; optional: use options to be specific
 ```bash
-Deribit <id> positions [<instrument>]
+Deribit <id> positions [currency] [kind]
 ```
 
 7. Get OrderBook:
@@ -230,6 +235,8 @@ Deribit <id> positions <instrument> [<depth>]
 │   │   └── json.hpp
 │   ├── utils
 │   │   └── utils.h 
+│   └── latency
+│       └── tracker.h
 │   └── websocket
 │       └── websocket_client.h
 ├── README.md
@@ -240,7 +247,8 @@ Deribit <id> positions <instrument> [<depth>]
     │   └── api.cpp # Implementation Deribit API's Functionality
     ├── authentication
     │   └── password.cpp # Authentication and Session Management Functionality
-    ├── main.cpp
+    ├── latency
+    │   └── tracker.cpp # Latenct tracking logic
     ├── utils
     │   └── utils.cpp # Helper functions and utils
     └── websocket
