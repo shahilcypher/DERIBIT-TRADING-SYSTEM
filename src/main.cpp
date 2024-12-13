@@ -55,7 +55,7 @@ int main() {
                 fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, 
                            "Error: Missing URI. Usage: connect <URI>\n");
             } else {
-                std::string uri = command.substr(8);
+                string uri = command.substr(8);
                 int id = endpoint.connect(uri);
         
                 if (id != -1) {
@@ -148,7 +148,7 @@ int main() {
         }
         else if (command == "Deribit connect") {
             // Special Deribit connection
-            const std::string uri = "wss://test.deribit.com/ws/api/v2";
+            const string uri = "wss://test.deribit.com/ws/api/v2";
             int id = endpoint.connect(uri);
 
             if (id != -1) {

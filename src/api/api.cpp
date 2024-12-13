@@ -24,6 +24,24 @@ vector<string> SUPPORTED_CURRENCIES = {"BTC", "ETH", "SOL", "XRP", "MATIC",
                                         "CLP", "PEN", "ECS", "ARS",                              
                                     };
 
+vector<string> subscriptions = {};
+
+void api::addSubscriptions(const string &index_name) {
+    string subscription = "deribit_price_index." + index_name;
+    if (std::find(subscriptions.begin(), subscriptions.end(), subscription) == subscriptions.end()) {
+        subscriptions.push_back(subscription);
+    }
+}
+
+
+void api::removeSubscriptions(const string &index_name) {
+    string subscription_to_remove = "deribit_price_index." + index_name;
+    auto it = std::find(subscriptions.begin(), subscriptions.end(), subscription_to_remove);
+    if (it != subscriptions.end()) {
+        subscriptions.erase(it);
+    }
+}
+
 bool api::is_valid_instrument(const string& instrument) {
     // Regex for Deribit instrument format
     // Supports formats like BTC-PERPETUAL, ETH-PERPETUAL, BTC-31DEC24, etc.
@@ -46,7 +64,9 @@ string api::process(const string &input) {
         {"positions", api::view_positions},
         {"orderbook", api::get_orderbook},
 
-        {"subscribe", api::subscribe}
+        {"subscribe", api::subscribe},
+        {"unsubscribe", api::unsubscribe},
+        {"unsubscribe_all", api::unsubscribe_all}
     };
 
     istringstream s(input.substr(8));
@@ -89,7 +109,7 @@ string api::authorize(const string &input) {
                    {"nonce", nonce},
                    {"scope", "session:name"}
                    };
-    if (flag == "-r" && j.dump() != "") AUTH_SENT = true;
+    if (flag == "-s" && j.dump() != "") AUTH_SENT = true;
     return j.dump();
 }
 
@@ -463,7 +483,7 @@ string api::cancel_all(const string &input) {
         j["method"] = "private/cancel_all_by_instrument";
         j["params"]["instrument"] = option;
     }
-    else if (option == "-r") {
+    else if (option == "-s") {
         j["method"] = "private/cancel_by_label";
         j["params"]["label"] = label;
     }
@@ -567,7 +587,7 @@ string api::get_orderbook(const string &input) {
     int id;
     string cmd;
     string instrument;
-    int depth = 10; // Default depth
+    int depth = 10;
 
     is >> id >> cmd >> instrument;
     
@@ -575,17 +595,6 @@ string api::get_orderbook(const string &input) {
     if (instrument.empty()) {
         utils::printerr("Instrument name is required\n");
         return "";
-    }
-
-    // Optional: validate instrument format if needed
-    if (!is_valid_instrument(instrument)) {
-        utils::printerr("Invalid instrument format\n");
-        return "";
-    }
-    
-    // Optional: allow specifying depth
-    if (is >> depth) {
-        depth = max(1, min(depth, 50)); // Limit depth between 1-50
     }
 
     jsonrpc j;
@@ -599,44 +608,60 @@ string api::get_orderbook(const string &input) {
 }
 
 string api::subscribe(const string &input) {
-    // Parse the input to extract subscription details
-    istringstream ss(input);
+    istringstream is(input);
     int id;
-    string cmd, channel;
-    
-    // Skip the first two tokens (id and 'subscribe')
-    ss >> id >> cmd;
-    
-    // Read the remaining input as the channel
-    getline(ss >> ws, channel);
+    string cmd;
+    string index_name;
 
-    // Validate the input
-    if (channel.empty()) {
-        utils::printerr("ERROR: No channel provided for subscription.\n");
-        return "";
-    }
+    is >> id >> cmd >> index_name;
 
-    // List of supported public channels for Deribit
-    vector<string> supported_channels = {
-        "deribit_price_index.btc_usd",
-        "book.BTC-PERPETUAL.raw",
-        "ticker.BTC-PERPETUAL"
-    };
-
-    // Check if the channel is supported
-    if (find(supported_channels.begin(), supported_channels.end(), channel) == supported_channels.end()) {
-        utils::printerr("ERROR: Unsupported channel. Supported channels are:\n");
-        for (const auto& supported : supported_channels) {
-            fmt::print(fg(fmt::color::cyan), "- {}\n", supported);
-        }
-        return "";
-    }
-
+    addSubscriptions(index_name);
     // Create the JSON-RPC request for subscription
     jsonrpc j;
-    j["method"] = "public/subscribe";
+    j["method"] = "private/subscribe";
+    j["id"] = 4235;
     j["params"] = {
-        {"channels", {channel}}
+        {"channels", subscriptions}
+    };
+
+    return j.dump();
+}
+
+string api::unsubscribe(const string &input) {
+    istringstream is(input);
+    int id;
+    string cmd;
+    string index_name;
+
+    is >> id >> cmd >> index_name;
+
+    removeSubscriptions(index_name);
+    // Create the JSON-RPC request for subscription
+    jsonrpc j;
+    j["method"] = "private/unsubscribe";
+    j["id"] = 3370;
+    j["params"] = {
+        {"channels", subscriptions}
+    };
+
+    return j.dump();
+}
+
+string api::unsubscribe_all(const string &input) {
+    istringstream is(input);
+    int id;
+    string cmd;
+    string index_name;
+
+    is >> id >> cmd >> index_name;
+
+    removeSubscriptions(index_name);
+    // Create the JSON-RPC request for subscription
+    jsonrpc j;
+    j["method"] = "private/subscribe_all";
+    j["id"] = 154;
+    j["params"] = {
+        {"channels", subscriptions}
     };
 
     return j.dump();

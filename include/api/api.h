@@ -10,6 +10,7 @@ using namespace std;
 using json = nlohmann::json;
 extern bool AUTH_SENT;
 extern vector<string> SUPPORTED_CURRENCIES;
+extern vector<string> subscriptions;
 
 class jsonrpc : public json {
     public:
@@ -33,6 +34,10 @@ class jsonrpc : public json {
 namespace api {
 
     bool is_valid_instrument(const string& instrument);
+
+    void addSubscriptions(const string &index_name);
+
+    void removeSubscriptions(const string &index_name);
     
     string process(const string &input);
 
@@ -55,4 +60,8 @@ namespace api {
     string get_orderbook(const string &input);
 
     string subscribe(const string &input);
+
+    string unsubscribe(const string &input);
+
+    string unsubscribe_all(const string &input);
 }

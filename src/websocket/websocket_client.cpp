@@ -35,52 +35,165 @@ void connection_metadata::record_summary(string const &message, string const &se
     map<string, function<map<string, string>(json)>> action_map = 
     {
         {"public/auth", [](json parsed_msg){ 
-                                            map<string, string> summary;
-                                            summary["method"] = parsed_msg["method"];
-                                            summary["grant_type"] = parsed_msg["params"]["grant_type"];
-                                            return summary;
-                                         }
-        },
+            map<string, string> summary;
+            summary["method"] = parsed_msg["method"];
+            summary["grant_type"] = parsed_msg["params"]["grant_type"];
+            summary["client_id"] = parsed_msg["params"]["client_id"];
+            summary["timestamp"] = to_string(parsed_msg["params"]["timestamp"].get<long long>());
+            summary["nonce"] = parsed_msg["params"]["nonce"];
+            summary["scope"] = parsed_msg["params"]["scope"];
+            return summary;
+        }},
+        
         {"private/sell", [](json parsed_msg){
-                                            map<string, string> summary = {};
-                                            summary["id"] = to_string(parsed_msg["id"].get<int>());
-                                            summary["method"] = parsed_msg["method"];
-                                            summary["instrument_name"] = parsed_msg["params"]["instrument_name"];
-                                            if (parsed_msg["params"].contains("amount"))
-                                                summary["amount"] = to_string(parsed_msg["params"]["amount"].get<int>());
-                                            if (parsed_msg["params"].contains("contracts"))
-                                                summary["contracts"] = to_string(parsed_msg["params"]["contracts"].get<int>());
-                                            return summary;
-                                         }                   
-        },
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["instrument_name"] = parsed_msg["params"]["instrument_name"];
+            summary["access_token"] = parsed_msg["params"]["access_token"];
+            
+            if (parsed_msg["params"].contains("amount"))
+                summary["amount"] = to_string(parsed_msg["params"]["amount"].get<double>());
+            
+            if (parsed_msg["params"].contains("contracts"))
+                summary["contracts"] = to_string(parsed_msg["params"]["contracts"].get<int>());
+            
+            summary["order_type"] = parsed_msg["params"]["type"];
+            summary["label"] = parsed_msg["params"]["label"];
+            summary["time_in_force"] = parsed_msg["params"]["time_in_force"];
+            
+            if (parsed_msg["params"].contains("price"))
+                summary["price"] = to_string(parsed_msg["params"]["price"].get<double>());
+            
+            return summary;
+        }},
+        
         {"private/buy", [](json parsed_msg){
-                                            map<string, string> summary = {};
-                                            summary["id"] = to_string(parsed_msg["id"].get<int>());
-                                            summary["method"] = parsed_msg["method"];
-                                            summary["instrument_name"] = parsed_msg["params"]["instrument_name"];
-                                            if (parsed_msg["params"].contains("amount"))
-                                                summary["amount"] = to_string(parsed_msg["params"]["amount"].get<int>());
-                                            if (parsed_msg["params"].contains("contracts"))
-                                                summary["contracts"] = to_string(parsed_msg["params"]["contracts"].get<int>());
-                                            return summary;
-                                         }                   
-        },
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["instrument_name"] = parsed_msg["params"]["instrument_name"];
+            summary["access_token"] = parsed_msg["params"]["access_token"];
+            
+            if (parsed_msg["params"].contains("amount"))
+                summary["amount"] = to_string(parsed_msg["params"]["amount"].get<double>());
+            
+            if (parsed_msg["params"].contains("contracts"))
+                summary["contracts"] = to_string(parsed_msg["params"]["contracts"].get<int>());
+            
+            summary["order_type"] = parsed_msg["params"]["type"];
+            summary["label"] = parsed_msg["params"]["label"];
+            summary["time_in_force"] = parsed_msg["params"]["time_in_force"];
+            
+            if (parsed_msg["params"].contains("price"))
+                summary["price"] = to_string(parsed_msg["params"]["price"].get<double>());
+            
+            return summary;
+        }},
+        
+        {"private/edit", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["order_id"] = parsed_msg["params"]["order_id"];
+            
+            if (parsed_msg["params"].contains("amount"))
+                summary["new_amount"] = to_string(parsed_msg["params"]["amount"].get<double>());
+            
+            if (parsed_msg["params"].contains("price"))
+                summary["new_price"] = to_string(parsed_msg["params"]["price"].get<double>());
+            
+            return summary;
+        }},
+        
         {"private/cancel", [](json parsed_msg){
-                                                map<string, string> summary = {};
-                                                summary["method"] = parsed_msg["method"];
-                                                summary["id"] = parsed_msg["order_id"];
-                                                return summary;
-                                              }
-        },
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["order_id"] = parsed_msg["params"]["order_id"];
+            return summary;
+        }},
+        
+        {"private/cancel_all", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            return summary;
+        }},
+        
+        {"private/cancel_all_by_instrument", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["instrument"] = parsed_msg["params"]["instrument"];
+            return summary;
+        }},
+        
+        {"private/cancel_by_label", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["label"] = parsed_msg["params"]["label"];
+            return summary;
+        }},
+        
+        {"private/cancel_all_by_currency", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["currency"] = parsed_msg["params"]["currency"];
+            return summary;
+        }},
+        
+        {"private/get_open_orders", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            return summary;
+        }},
+        
+        {"private/get_open_orders_by_instrument", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["instrument"] = parsed_msg["params"]["instrument"];
+            return summary;
+        }},
+        
+        {"private/get_open_orders_by_currency", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["currency"] = parsed_msg["params"]["currency"];
+            return summary;
+        }},
+        
+        {"private/get_open_orders_by_label", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["currency"] = parsed_msg["params"]["currency"];
+            summary["label"] = parsed_msg["params"]["label"];
+            return summary;
+        }},
+        
+        {"private/get_positions", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            
+            if (parsed_msg["params"].contains("currency"))
+                summary["currency"] = parsed_msg["params"]["currency"];
+            
+            if (parsed_msg["params"].contains("kind"))
+                summary["kind"] = parsed_msg["params"]["kind"];
+            
+            return summary;
+        }},
+        
+        {"public/get_order_book", [](json parsed_msg){
+            map<string, string> summary = {};
+            summary["method"] = parsed_msg["method"];
+            summary["instrument_name"] = parsed_msg["params"]["instrument_name"];
+            summary["depth"] = to_string(parsed_msg["params"]["depth"].get<int>());
+            return summary;
+        }},
+        
         {"received", [](json parsed_msg){
-                                        map<string, string> summary = {};
-                                        if (parsed_msg.contains("result"))
-                                            summary = {{"result", parsed_msg["result"].dump()}};
-                                        else if (parsed_msg.contains("error"))
-                                            summary = {{"error message", parsed_msg["error"].dump()}};
-                                        return summary;
-                                     }
-        }
+            map<string, string> summary = {};
+            if (parsed_msg.contains("result"))
+                summary = {{"result", parsed_msg["result"].dump()}};
+            else if (parsed_msg.contains("error"))
+                summary = {{"error message", parsed_msg["error"].dump()}};
+            return summary;
+        }}
     };
     
     auto find = action_map.find(cmd);
@@ -95,7 +208,7 @@ void connection_metadata::record_summary(string const &message, string const &se
 }
 
 void connection_metadata::on_open(client * c, websocketpp::connection_hdl hdl) {
-    m_status = "Open";
+    m_status = "Connected";  // Change from "Open" to "Connected"
     client::connection_ptr con = c->get_con_from_hdl(hdl);
     m_server = con->get_response_header("Server");
 }
@@ -122,7 +235,7 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
 
     getLatencyTracker().start_measurement(
         LatencyTracker::WEBSOCKET_MESSAGE_PROPAGATION, 
-        "websocket_message_" + std::to_string(m_id)
+        "websocket_message_" + to_string(m_id)
     );
 
     if (msg->get_opcode() == websocketpp::frame::opcode::text) {
@@ -132,17 +245,11 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
         m_messages.push_back("RECEIVED: " + websocketpp::utility::to_hex(msg->get_payload()));
         record_summary(websocketpp::utility::to_hex(msg->get_payload()), "RECEIVED");
     }
-
-    char show_msg;
-    utils::printcmd("Received message. Show message? Y/N ", 57, 255, 20);
-    cin >> show_msg;
-    if(show_msg == 'y' | show_msg == 'Y'){
-        if (msg->get_payload()[0] == '{') {
-            cout << "Received message: " << utils::pretty(msg->get_payload()) << endl;
-        }
-        else{
-            cout << "Received message: " << msg->get_payload() << endl;
-        }
+    if (msg->get_payload()[0] == '{') {
+        cout << "Received message: " << utils::pretty(msg->get_payload()) << endl;
+    }
+    else{
+        cout << "Received message: " << msg->get_payload() << endl;
     }
 
     if (AUTH_SENT) {
@@ -155,7 +262,7 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
 
     getLatencyTracker().stop_measurement(
         LatencyTracker::WEBSOCKET_MESSAGE_PROPAGATION, 
-        "websocket_message_" + std::to_string(m_id)
+        "websocket_message_" + to_string(m_id)
     );
 }
 

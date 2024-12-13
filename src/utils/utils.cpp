@@ -42,13 +42,13 @@ void utils::printHeader() {
 
 void utils::printHelp() {
     int terminal_width = utils::getTerminalWidth();
-    std::string separator(terminal_width, '=');
+    string separator(terminal_width, '=');
 
-    std::cout << "\n" << separator << "\n"
+    cout << "\n" << separator << "\n"
               << fmt::format("{:^{}}\n", "COMMAND LIST", terminal_width)
               << separator << "\n\n";
 
-    std::cout << "GENERAL COMMANDS:\n"
+    cout << "GENERAL COMMANDS:\n"
               << fmt::format("  {:<30} : {}\n", "> help", "Displays this help text")
               << fmt::format("  {:<30} : {}\n", "> quit / exit", "Exits the program")
               << fmt::format("  {:<30} : {}\n", "> connect <URI>", "Creates a WebSocket connection with the given URI")
@@ -61,12 +61,12 @@ void utils::printHelp() {
               << fmt::format("  {:<30} : {}\n", "> reset_report", "Clears the latency report data for the current session")
               << "\n";
 
-    std::cout << "DERIBIT API COMMANDS:\n\n"
+    cout << "DERIBIT API COMMANDS:\n\n"
               << "  Connection and Authentication:\n"
               << fmt::format("  {:<60} : {}\n", "> Deribit connect", 
                               "Establish a new WebSocket connection to Deribit's testnet")
-              << fmt::format("  {:<60} : {}\n", "> Deribit <id> authorize <client_id> <client_secret> [-r]", 
-                              "Authenticate and retrieve an access token; use -r to persist token in session")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> authorize <client_id> <client_secret> [-s]", 
+                              "Authenticate and retrieve an access token; use -s to persist token in session")
               << "\n"
               
               << "  Order Management:\n"
@@ -91,7 +91,7 @@ void utils::printHelp() {
                               "View current buy and sell orders for an instrument, with optional depth limit")
               << "\n";
 
-    std::cout << separator << "\n\n";
+    cout << separator << "\n\n";
 }
 
 void utils::printcmd(string const &str){

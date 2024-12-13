@@ -143,9 +143,9 @@ connect wss://test.deribit.com/ws/api/v2
 ```
 
 2. Authenticate:
-Sends the authorization message to retrieve the access token; optional: use -r to remember the token for the session
+Sends the authorization message to retrieve the access token; optional: use -s to remember the token for the session
 ```bash
-Deribit <id> authorize <connection_id> <client_id> <client_secret> [-r]
+Deribit <id> authorize <connection_id> <client_id> <client_secret> [-s]
 ```
 
 #### Trading Commands
@@ -193,7 +193,7 @@ Deribit <id> positions [currency] [kind]
 7. Get OrderBook:
 Fetches all current buy and sell orders for the specified instrument; optional: specify depth of search
 ```bash
-Deribit <id> positions <instrument> [<depth>]
+Deribit <id> orderbook <instrument> [<depth>]
 ```
 
 ## Supported Order Types
