@@ -6,8 +6,14 @@
 
 using namespace std;
 
+bool isStreaming = false;
 
-connection_metadata::connection_metadata(int id, websocketpp::connection_hdl hdl, string uri):
+connection_metadata::connection_metadata(
+    int id, 
+    websocketpp::connection_hdl hdl, 
+    string uri, 
+    websocket_endpoint* endpoint
+) :
     m_id(id),
     m_hdl(hdl),
     m_status("Connecting"),
@@ -15,6 +21,7 @@ connection_metadata::connection_metadata(int id, websocketpp::connection_hdl hdl
     m_server("N/A"),
     m_messages({}),
     m_summaries({}),
+    m_endpoint(endpoint),
     MSG_PROCESSED(false)
 {}
 
@@ -237,6 +244,26 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
         LatencyTracker::WEBSOCKET_MESSAGE_PROPAGATION, 
         "websocket_message_" + to_string(m_id)
     );
+    json received_json = json::parse(msg->get_payload());
+    if (received_json.contains("method") && received_json["method"] == "subscription" && isStreaming) {
+        utils::clear_console();
+        std::cout << "(Press q to stop)\n\n" << received_json << std::endl;
+        if (utils::is_key_pressed('q')) {
+            utils::clear_console();
+            isStreaming = false;
+            json unsubscribe = {
+                {"jsonrpc", "2.0"},
+                {"id", 154},
+                {"method", "private/unsubscribe_all"},
+                {"params", {}}
+            };
+            // Use the stored endpoint to send the message
+            if (m_endpoint) {
+                m_endpoint->send(m_id, unsubscribe.dump());
+            }
+        }
+    }
+
 
     if (msg->get_opcode() == websocketpp::frame::opcode::text) {
         m_messages.push_back("RECEIVED: " + msg->get_payload());
@@ -265,6 +292,33 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
         "websocket_message_" + to_string(m_id)
     );
 }
+
+int websocket_endpoint::streamSubscriptions(const std::vector<std::string>& connections) {
+    json subscriptions = connections;
+
+    json subscribe = {
+        {"jsonrpc", "2.0"},
+        {"id", 4235},
+        {"method", "private/subscribe"},
+        {"params", {
+            {"channels", subscriptions}
+        }}
+    };
+    isStreaming = true;
+    
+    // Use the first connection ID from the connection list
+    if (!m_connection_list.empty()) {
+        int connectionId = m_connection_list.begin()->first;
+        send(connectionId, subscribe.dump());
+    } else {
+        std::cout << "No active connections to send subscribe message" << std::endl;
+        return -1;
+    }
+    
+    while(isStreaming);
+    return 0;
+}
+
 
 ostream &operator<< (ostream &out, connection_metadata const &data) {
     out << "> URI: " << data.m_uri << "\n"
@@ -340,7 +394,8 @@ int websocket_endpoint::connect(string const &uri) {
         return -1;
     }
 
-    connection_metadata::ptr metadata_ptr(new connection_metadata(new_id, con->get_handle(), uri));
+    // Pass 'this' to the connection_metadata constructor
+    connection_metadata::ptr metadata_ptr(new connection_metadata(new_id, con->get_handle(), uri, this));
     m_connection_list[new_id] = metadata_ptr;
 
     con->set_open_handler(websocketpp::lib::bind(

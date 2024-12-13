@@ -26,6 +26,10 @@ vector<string> SUPPORTED_CURRENCIES = {"BTC", "ETH", "SOL", "XRP", "MATIC",
 
 vector<string> subscriptions = {};
 
+vector<string> api::getSubscription(){
+    return subscriptions;
+}
+
 void api::addSubscriptions(const string &index_name) {
     string subscription = "deribit_price_index." + index_name;
     if (std::find(subscriptions.begin(), subscriptions.end(), subscription) == subscriptions.end()) {
@@ -617,14 +621,15 @@ string api::subscribe(const string &input) {
 
     addSubscriptions(index_name);
     // Create the JSON-RPC request for subscription
-    jsonrpc j;
-    j["method"] = "private/subscribe";
-    j["id"] = 4235;
-    j["params"] = {
-        {"channels", subscriptions}
-    };
+    // jsonrpc j;
+    // j["method"] = "private/subscribe";
+    // j["id"] = 4235;
+    // j["params"] = {
+    //     {"channels", subscriptions}
+    // };
 
-    return j.dump();
+    // return j.dump();
+    return "";
 }
 
 string api::unsubscribe(const string &input) {
@@ -637,32 +642,31 @@ string api::unsubscribe(const string &input) {
 
     removeSubscriptions(index_name);
     // Create the JSON-RPC request for subscription
-    jsonrpc j;
-    j["method"] = "private/unsubscribe";
-    j["id"] = 3370;
-    j["params"] = {
-        {"channels", subscriptions}
-    };
+    // jsonrpc j;
+    // j["method"] = "private/unsubscribe";
+    // j["id"] = 3370;
+    // j["params"] = {
+    //     {"channels", subscriptions}
+    // };
 
-    return j.dump();
+    // return j.dump();
+
+    return "";
 }
 
 string api::unsubscribe_all(const string &input) {
     istringstream is(input);
     int id;
     string cmd;
-    string index_name;
-
-    is >> id >> cmd >> index_name;
-
-    removeSubscriptions(index_name);
+    subscriptions = {};
     // Create the JSON-RPC request for subscription
-    jsonrpc j;
-    j["method"] = "private/subscribe_all";
-    j["id"] = 154;
-    j["params"] = {
-        {"channels", subscriptions}
-    };
+    // jsonrpc j;
+    // j["method"] = "private/subscribe_all";
+    // j["id"] = 154;
+    // j["params"] = {
+    //     {"channels", subscriptions}
+    // };
 
-    return j.dump();
+    // return j.dump();
+    return "";
 }

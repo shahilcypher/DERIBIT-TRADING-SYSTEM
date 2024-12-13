@@ -35,5 +35,6 @@ namespace utils {
     int getTerminalWidth();
     void printHeader();
     void printHelp();
-
+    void clear_console();
+    bool is_key_pressed(char key);
 }

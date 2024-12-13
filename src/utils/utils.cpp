@@ -9,6 +9,11 @@
 #include <openssl/evp.h>
 #include "json/json.hpp"
 
+#include "json/json.hpp"
+#include <thread>
+#include <atomic>
+#include <condition_variable>
+
 #ifdef _WIN32
 #include <conio.h> 
 #else
@@ -205,4 +210,37 @@ string utils::getPassword() {
     #endif
 
     return password;
+}
+
+void utils::clear_console() {
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+bool utils::is_key_pressed(char key) {
+    std::atomic<bool> key_pressed(false);
+    std::condition_variable cv;
+    std::mutex mtx;
+
+    // Create a thread for reading key presses
+    std::thread([&]() {
+        while (true) {
+            char ch = getchar(); // Blocking call
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                if (ch == key) {
+                    key_pressed.store(true);
+                    cv.notify_all();
+                }
+            }
+        }
+    }).detach();
+
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [&]() { return key_pressed.load(); });
+    key_pressed.store(false); // Reset state
+    return true;
 }

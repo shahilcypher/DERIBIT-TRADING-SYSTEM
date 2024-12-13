@@ -28,9 +28,13 @@ using json = nlohmann::json;
 using namespace std;
 
 extern bool AUTH_SENT;
+extern bool isStreaming;
 
 typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
 typedef shared_ptr<boost::asio::ssl::context> context_ptr;
+
+// Forward declaration of websocket_endpoint class
+class websocket_endpoint;
 
 class connection_metadata {
 private:
@@ -42,6 +46,8 @@ private:
     string m_error_reason;
     vector<string> m_summaries;
 
+    websocket_endpoint* m_endpoint;
+
 public:
     typedef websocketpp::lib::shared_ptr<connection_metadata> ptr;
 
@@ -50,7 +56,7 @@ public:
     vector<string> m_messages;
     bool MSG_PROCESSED;
 
-    connection_metadata(int id, websocketpp::connection_hdl hdl, string uri);
+    connection_metadata(int id, websocketpp::connection_hdl hdl, string uri, websocket_endpoint* endpoint = nullptr);
 
     int get_id();
     websocketpp::connection_hdl get_hdl();
@@ -86,9 +92,7 @@ public:
     connection_metadata::ptr get_metadata(int id) const;
     void close(int id, websocketpp::close::status::value code, string reason);
     int send(int id, string message);
-
-    bool is_connection_streaming(int id) const;
-
+    int streamSubscriptions(const std::vector<std::string>& connections);
 };
 
 #endif // WEBSOCKET_CLIENT_H

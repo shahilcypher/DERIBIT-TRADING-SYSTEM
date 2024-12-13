@@ -161,6 +161,14 @@ int main() {
                            "> Failed to create connection to Deribit TESTNET.\n");
             }
         }
+        else if(command == "view_stream"){
+            vector<string> connections = api::getSubscription();
+            if(connections.size()){
+                endpoint.streamSubscriptions(connections);
+            }else{
+                cout << "No Subscriptions" << endl;
+            }
+        }
         else if (command.substr(0, 7) == "Deribit") {
             // Process Deribit-specific API commands
             int id; 

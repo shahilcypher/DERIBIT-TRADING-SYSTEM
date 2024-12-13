@@ -33,6 +33,8 @@ class jsonrpc : public json {
 
 namespace api {
 
+    vector<string> getSubscription();
+
     bool is_valid_instrument(const string& instrument);
 
     void addSubscriptions(const string &index_name);
