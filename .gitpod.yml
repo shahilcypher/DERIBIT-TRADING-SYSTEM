@@ -40,6 +40,7 @@ tasks:
       cd build
       cmake ..
       make -j$(nproc)
+      ./deribit_trader
 
 ports:
   - port: 8080

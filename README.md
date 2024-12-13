@@ -37,6 +37,27 @@ Deribit Trading System is a high-performance order execution and management syst
 - OpenSSL
 - Git
 
+### Fast setup
+To quickly configure your system and set up the project, execute the appropriate setup script for your operating system as detailed below.
+
+- NOTE: Ensure you are in the root directory of the repository before running the script.
+
+##### macOS/Linux:
+Run the following commands to execute the setup script:
+```sh
+chmod +x ./scripts/setup_mac.sh  # Or setup_linux.sh
+./scripts/setup_mac.sh
+```
+
+#### Windows
+For Windows, use the PowerShell script as follows:
+```ps1
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\scripts\setup_windows.ps1
+```
+This will install the necessary dependencies, build the project, and prepare it for use.
+
+
 ### Installation Guide
 
 #### Mac OS
