@@ -165,8 +165,25 @@ int main() {
             vector<string> connections = api::getSubscription();
             if(connections.size()){
                 endpoint.streamSubscriptions(connections);
-            }else{
-                cout << "No Subscriptions" << endl;
+            } else {
+                cout << "No Subscriptions. Use 'Deribit <id> subscribe <symbol>' to add a subscription." << endl;
+            }
+        }
+        else if(command == "view_subscriptions"){
+            vector<string> connections = api::getSubscription();
+            if(!connections.empty()){
+                cout << "Current Subscriptions:" << endl;
+                for(const auto& connection : connections){
+                    // Find the position after the prefix
+                    size_t prefix_pos = connection.find("deribit_price_index.");
+                    if(prefix_pos != string::npos){
+                        // Extract substring after the prefix
+                        string index_name = connection.substr(prefix_pos + strlen("deribit_price_index."));
+                        cout << "- " << index_name << endl;
+                    }
+                }
+            } else {
+                cout << "No Subscriptions. Use 'Deribit <id> subscribe <symbol>' to add a subscription." << endl;
             }
         }
         else if (command.substr(0, 7) == "Deribit") {

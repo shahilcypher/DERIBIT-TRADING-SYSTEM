@@ -24,7 +24,7 @@ vector<string> SUPPORTED_CURRENCIES = {"BTC", "ETH", "SOL", "XRP", "MATIC",
                                         "CLP", "PEN", "ECS", "ARS",                              
                                     };
 
-vector<string> subscriptions = {};
+vector<string> subscriptions;
 
 vector<string> api::getSubscription(){
     return subscriptions;

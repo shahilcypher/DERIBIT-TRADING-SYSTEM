@@ -37,4 +37,5 @@ namespace utils {
     void printHelp();
     void clear_console();
     bool is_key_pressed(char key);
+    bool check_key_pressed(char key);
 }

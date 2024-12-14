@@ -20,6 +20,7 @@
 #include <termios.h>
 #include <unistd.h>
 #endif
+#include <fcntl.h>
 
 using namespace std;
 
@@ -220,27 +221,32 @@ void utils::clear_console() {
 #endif
 }
 
+
 bool utils::is_key_pressed(char key) {
-    std::atomic<bool> key_pressed(false);
-    std::condition_variable cv;
-    std::mutex mtx;
-
-    // Create a thread for reading key presses
-    std::thread([&]() {
-        while (true) {
-            char ch = getchar(); // Blocking call
-            {
-                std::unique_lock<std::mutex> lock(mtx);
-                if (ch == key) {
-                    key_pressed.store(true);
-                    cv.notify_all();
-                }
-            }
-        }
-    }).detach();
-
-    std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [&]() { return key_pressed.load(); });
-    key_pressed.store(false); // Reset state
-    return true;
+    struct termios oldt, newt;
+    int ch;
+    int oldf;
+    // Get current terminal settings
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    
+    // Disable buffering and echo
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    
+    // Set stdin to non-blocking
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+    // Try to read a character
+    ch = getchar();
+    // Restore terminal settings
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+    // Check if the pressed key matches
+    if (ch == key) {
+        // Clear any remaining input
+        while (getchar() != EOF);
+        return true;
+    }
+    return false;
 }

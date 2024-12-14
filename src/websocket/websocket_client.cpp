@@ -215,7 +215,7 @@ void connection_metadata::record_summary(string const &message, string const &se
 }
 
 void connection_metadata::on_open(client * c, websocketpp::connection_hdl hdl) {
-    m_status = "Connected";  // Change from "Open" to "Connected"
+    m_status = "Connected";
     client::connection_ptr con = c->get_con_from_hdl(hdl);
     m_server = con->get_response_header("Server");
 }
@@ -239,54 +239,96 @@ void connection_metadata::on_close(client * c, websocketpp::connection_hdl hdl) 
 }
 
 void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
-
+    // Start latency tracking
     getLatencyTracker().start_measurement(
         LatencyTracker::WEBSOCKET_MESSAGE_PROPAGATION, 
         "websocket_message_" + to_string(m_id)
     );
-    json received_json = json::parse(msg->get_payload());
-    if (received_json.contains("method") && received_json["method"] == "subscription" && isStreaming) {
-        utils::clear_console();
-        std::cout << "(Press q to stop)\n\n" << received_json << std::endl;
-        if (utils::is_key_pressed('q')) {
-            utils::clear_console();
-            isStreaming = false;
-            json unsubscribe = {
-                {"jsonrpc", "2.0"},
-                {"id", 154},
-                {"method", "private/unsubscribe_all"},
-                {"params", {}}
-            };
-            // Use the stored endpoint to send the message
-            if (m_endpoint) {
-                m_endpoint->send(m_id, unsubscribe.dump());
+
+    try {
+        if (!msg) return;
+
+        // Extract payload as string
+        std::string payload = msg->get_payload();
+
+        // Parse JSON safely
+        json received_json;
+        try {
+            received_json = json::parse(payload);
+        } catch (const json::parse_error& e) {
+            std::cerr << "JSON parse error: " << e.what() << std::endl;
+            std::cerr << "Problematic payload: " << payload << std::endl;
+            return;
+        }
+
+        // Handle different message types more robustly
+        if (received_json.contains("method")) {
+            std::string method = received_json.value("method", "");
+
+            if (method == "subscription" && isStreaming) {
+                auto params = received_json.value("params", json{});
+                auto data = params.value("data", json{});
+
+                // Add more robust null checking
+                if (!data.is_null() && data.is_object()) {
+                    utils::clear_console();
+                    std::cout << "(Press q to stop streaming)\n\n";
+                    std::cout << "Subscription Data: " << data.dump(4) << std::endl;
+
+                    // Validate specific fields you expect
+                    if (data.contains("price") && data["price"].is_number() &&
+                        data.contains("timestamp") && data["timestamp"].is_number() &&
+                        data.contains("index_name") && data["index_name"].is_string()) {
+                        // Process the data as needed
+                        double price = data["price"];
+                        int64_t timestamp = data["timestamp"];
+                        std::string index_name = data["index_name"];
+
+                        std::cout << "Price: " << price 
+                                  << ", Timestamp: " << timestamp 
+                                  << ", Index: " << index_name << std::endl;
+                    } else {
+                        std::cerr << "Unexpected data format" << std::endl;
+                    }
+                } else {
+                    std::cerr << "Invalid or null data received" << std::endl;
+                }
             }
         }
+        if(!isStreaming){
+            if (msg->get_opcode() == websocketpp::frame::opcode::text) {
+                m_messages.push_back("RECEIVED: " + msg->get_payload());
+            record_summary(msg->get_payload(), "RECEIVED");
+            } else {
+                m_messages.push_back("RECEIVED: " + websocketpp::utility::to_hex(msg->get_payload()));
+            record_summary(websocketpp::utility::to_hex(msg->get_payload()), "RECEIVED");
+            }
+            if (msg->get_payload()[0] == '{') {
+                cout << "Received message: " << utils::pretty(msg->get_payload()) << endl;
+            }
+            else{
+                cout << "Received message: " << msg->get_payload() << endl;
+            }
+        }
+
+        // Handle other message types or authorization
+        if (AUTH_SENT && received_json.contains("result") && 
+            received_json["result"].contains("access_token")) {
+            Password::password().setAccessToken(received_json["result"]["access_token"]);
+            utils::printcmd("Authorization successful!\n");
+            AUTH_SENT = false;
+        }
+
+        MSG_PROCESSED = true;
+        cv.notify_one();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error processing message: " << e.what() << std::endl;
+        MSG_PROCESSED = true;
+        cv.notify_one();
     }
 
-
-    if (msg->get_opcode() == websocketpp::frame::opcode::text) {
-        m_messages.push_back("RECEIVED: " + msg->get_payload());
-        record_summary(msg->get_payload(), "RECEIVED");
-    } else {
-        m_messages.push_back("RECEIVED: " + websocketpp::utility::to_hex(msg->get_payload()));
-        record_summary(websocketpp::utility::to_hex(msg->get_payload()), "RECEIVED");
-    }
-    if (msg->get_payload()[0] == '{') {
-        cout << "Received message: " << utils::pretty(msg->get_payload()) << endl;
-    }
-    else{
-        cout << "Received message: " << msg->get_payload() << endl;
-    }
-
-    if (AUTH_SENT) {
-        Password::password().setAccessToken(json::parse(msg->get_payload())["result"]["access_token"]);
-        utils::printcmd("Authorization successful!\n");
-        AUTH_SENT = false;
-    }
-    MSG_PROCESSED = true;
-    cv.notify_one();
-
+    // Stop latency tracking
     getLatencyTracker().stop_measurement(
         LatencyTracker::WEBSOCKET_MESSAGE_PROPAGATION, 
         "websocket_message_" + to_string(m_id)
@@ -294,31 +336,81 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
 }
 
 int websocket_endpoint::streamSubscriptions(const std::vector<std::string>& connections) {
-    json subscriptions = connections;
+    // Ensure we have connections
+    if (connections.empty()) {
+        std::cout << "No subscriptions to stream." << std::endl;
+        return -1;
+    }
 
     json subscribe = {
         {"jsonrpc", "2.0"},
         {"id", 4235},
         {"method", "private/subscribe"},
         {"params", {
-            {"channels", subscriptions}
+            {"channels", connections}
         }}
     };
+    
     isStreaming = true;
     
     // Use the first connection ID from the connection list
     if (!m_connection_list.empty()) {
         int connectionId = m_connection_list.begin()->first;
+        
+        // Send subscription message
         send(connectionId, subscribe.dump());
+        
+        // Setup for non-blocking input
+        struct termios oldt, newt;
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+        
+        // Disable canonical mode and echo
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        
+        // Set stdin to non-blocking
+        int oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+        fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+        
+        // Real-time streaming loop
+        std::cout << "Streaming... Press 'q' to quit." << std::endl;
+        while(isStreaming) {
+            // Check for 'q' key press
+            char ch;
+            if (read(STDIN_FILENO, &ch, 1) > 0) {
+                if (ch == 'q' || ch == 'Q') {
+                    isStreaming = false;
+                    
+                    // Unsubscribe
+                    json unsubscribe = {
+                        {"jsonrpc", "2.0"},
+                        {"id", 154},
+                        {"method", "private/unsubscribe_all"},
+                        {"params", {}}
+                    };
+                    
+                    send(connectionId, unsubscribe.dump());
+                    break;
+                }
+            }
+            
+            // Prevent busy waiting
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        
+        // Restore terminal settings
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        fcntl(STDIN_FILENO, F_SETFL, oldf);
+        
+        std::cout << "Streaming stopped." << std::endl;
     } else {
         std::cout << "No active connections to send subscribe message" << std::endl;
         return -1;
     }
     
-    while(isStreaming);
     return 0;
 }
-
 
 ostream &operator<< (ostream &out, connection_metadata const &data) {
     out << "> URI: " << data.m_uri << "\n"

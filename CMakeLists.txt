@@ -31,6 +31,9 @@ FetchContent_MakeAvailable(fmt)
 find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(OpenSSL REQUIRED)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # Add executable and its source files
 add_executable(deribit_trader 
     src/authentication/password.cpp
@@ -61,6 +64,10 @@ target_link_libraries(deribit_trader
         OpenSSL::Crypto
         fmt::fmt
         readline
+)
+
+set_target_properties(deribit_trader PROPERTIES
+    LINK_FLAGS "-Wl,--export-dynamic"
 )
 
 # Debugging information
