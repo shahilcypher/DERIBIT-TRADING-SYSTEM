@@ -9,11 +9,6 @@
 #include <openssl/evp.h>
 #include "json/json.hpp"
 
-#include "json/json.hpp"
-#include <thread>
-#include <atomic>
-#include <condition_variable>
-
 #ifdef _WIN32
 #include <conio.h> 
 #else
@@ -29,7 +24,7 @@ using json = nlohmann::json;
 int utils::getTerminalWidth() {
     struct winsize w;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
-        return w.ws_col; // Terminal width in columns
+        return w.ws_col;
     }
     return 80; // Default to 80 columns if width can't be determined
 }
@@ -63,6 +58,8 @@ void utils::printHelp() {
               << fmt::format("  {:<30} : {}\n", "> show <id>", "Displays metadata for the specified connection")
               << fmt::format("  {:<30} : {}\n", "> show_messages <id>", "Lists all messages sent and received on the specified connection")
               << fmt::format("  {:<30} : {}\n", "> send <id> <message>", "Sends a message to the specified connection")
+              << fmt::format("  {:<30} : {}\n", "> view_subscriptions", "Displays the list of subscribed symbols to stream continuous orderbook updates")
+              << fmt::format("  {:<30} : {}\n", "> view_stream", "Displays the stream continuous orderbook updates subscribed symbols")
               << fmt::format("  {:<30} : {}\n", "> latency_report", "Generates a performance latency report for the current session")
               << fmt::format("  {:<30} : {}\n", "> reset_report", "Clears the latency report data for the current session")
               << "\n";
@@ -95,6 +92,15 @@ void utils::printHelp() {
                               "Fetch current open positions, optionally filtered by currency or instrument type")
               << fmt::format("  {:<60} : {}\n", "> Deribit <id> orderbook <instrument> [depth]", 
                               "View current buy and sell orders for an instrument, with optional depth limit")
+              << "\n"
+
+              << "  Symbol Subscription:\n"
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> subscribe [symbol]", 
+                              "Subscribes to that symbol to stream continuous orderbook updates")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> unsubscribe [symbol]", 
+                              "Unsubscribes to that symbol stream continuous orderbook updates")
+              << fmt::format("  {:<60} : {}\n", "> Deribit <id> unsubscribe_all", 
+                              "Unsubscribes to all symbols that have been subscribed to stream real time data")
               << "\n";
 
     cout << separator << "\n\n";
@@ -226,25 +232,22 @@ bool utils::is_key_pressed(char key) {
     struct termios oldt, newt;
     int ch;
     int oldf;
-    // Get current terminal settings
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
     
-    // Disable buffering and echo
     newt.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
     
     // Set stdin to non-blocking
     oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
     fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-    // Try to read a character
+
     ch = getchar();
-    // Restore terminal settings
+
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     fcntl(STDIN_FILENO, F_SETFL, oldf);
-    // Check if the pressed key matches
+
     if (ch == key) {
-        // Clear any remaining input
         while (getchar() != EOF);
         return true;
     }

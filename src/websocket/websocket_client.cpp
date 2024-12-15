@@ -248,50 +248,48 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
     try {
         if (!msg) return;
 
-        // Extract payload as string
-        std::string payload = msg->get_payload();
+        string payload = msg->get_payload();
 
-        // Parse JSON safely
         json received_json;
         try {
             received_json = json::parse(payload);
         } catch (const json::parse_error& e) {
-            std::cerr << "JSON parse error: " << e.what() << std::endl;
-            std::cerr << "Problematic payload: " << payload << std::endl;
+            cerr << "JSON parse error: " << e.what() << endl;
+            cerr << "Problematic payload: " << payload << endl;
             return;
         }
 
-        // Handle different message types more robustly
         if (received_json.contains("method")) {
-            std::string method = received_json.value("method", "");
+            string method = received_json.value("method", "");
 
             if (method == "subscription" && isStreaming) {
                 auto params = received_json.value("params", json{});
                 auto data = params.value("data", json{});
 
-                // Add more robust null checking
                 if (!data.is_null() && data.is_object()) {
                     utils::clear_console();
-                    std::cout << "(Press q to stop streaming)\n\n";
-                    std::cout << "Subscription Data: " << data.dump(4) << std::endl;
+                    fmt::print(fmt::fg(fmt::color::blue) | fmt::emphasis::bold,
+                        "> (Press q to stop streaming)\n\n");
+                    cout << "Subscription Data: " << data.dump(4) << endl;
 
-                    // Validate specific fields you expect
                     if (data.contains("price") && data["price"].is_number() &&
                         data.contains("timestamp") && data["timestamp"].is_number() &&
                         data.contains("index_name") && data["index_name"].is_string()) {
-                        // Process the data as needed
                         double price = data["price"];
                         int64_t timestamp = data["timestamp"];
-                        std::string index_name = data["index_name"];
+                        string index_name = data["index_name"];
 
-                        std::cout << "Price: " << price 
-                                  << ", Timestamp: " << timestamp 
-                                  << ", Index: " << index_name << std::endl;
+                        fmt::print(fmt::fg(fmt::color::green) | fmt::emphasis::bold,
+                                   "Price: {} ", price);
+                        fmt::print(fmt::fg(fmt::color::yellow),
+                                   "Timestamp: {} ", timestamp);
+                        fmt::print(fmt::fg(fmt::color::cyan),
+                                   "Index: {}\n", index_name);
                     } else {
-                        std::cerr << "Unexpected data format" << std::endl;
+                        cerr << "Unexpected data format" << endl;
                     }
                 } else {
-                    std::cerr << "Invalid or null data received" << std::endl;
+                    cerr << "Invalid or null data received" << endl;
                 }
             }
         }
@@ -311,7 +309,6 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
             }
         }
 
-        // Handle other message types or authorization
         if (AUTH_SENT && received_json.contains("result") && 
             received_json["result"].contains("access_token")) {
             Password::password().setAccessToken(received_json["result"]["access_token"]);
@@ -322,8 +319,8 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
         MSG_PROCESSED = true;
         cv.notify_one();
     }
-    catch (const std::exception& e) {
-        std::cerr << "Error processing message: " << e.what() << std::endl;
+    catch (const exception& e) {
+        cerr << "Error processing message: " << e.what() << endl;
         MSG_PROCESSED = true;
         cv.notify_one();
     }
@@ -335,10 +332,9 @@ void connection_metadata::on_message(websocketpp::connection_hdl hdl, client::me
     );
 }
 
-int websocket_endpoint::streamSubscriptions(const std::vector<std::string>& connections) {
-    // Ensure we have connections
+int websocket_endpoint::streamSubscriptions(const vector<string>& connections) {
     if (connections.empty()) {
-        std::cout << "No subscriptions to stream." << std::endl;
+        cout << "No subscriptions to stream." << endl;
         return -1;
     }
 
@@ -353,28 +349,23 @@ int websocket_endpoint::streamSubscriptions(const std::vector<std::string>& conn
     
     isStreaming = true;
     
-    // Use the first connection ID from the connection list
     if (!m_connection_list.empty()) {
         int connectionId = m_connection_list.begin()->first;
         
-        // Send subscription message
         send(connectionId, subscribe.dump());
         
-        // Setup for non-blocking input
         struct termios oldt, newt;
         tcgetattr(STDIN_FILENO, &oldt);
         newt = oldt;
         
-        // Disable canonical mode and echo
         newt.c_lflag &= ~(ICANON | ECHO);
         tcsetattr(STDIN_FILENO, TCSANOW, &newt);
         
-        // Set stdin to non-blocking
         int oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
         fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
         
-        // Real-time streaming loop
-        std::cout << "Streaming... Press 'q' to quit." << std::endl;
+        fmt::print(fmt::fg(fmt::color::blue) | fmt::emphasis::bold,
+                "> Streaming... Press 'q' to quit.\n");
         while(isStreaming) {
             // Check for 'q' key press
             char ch;
@@ -396,16 +387,18 @@ int websocket_endpoint::streamSubscriptions(const std::vector<std::string>& conn
             }
             
             // Prevent busy waiting
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            this_thread::sleep_for(chrono::milliseconds(1));
         }
         
         // Restore terminal settings
         tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
         fcntl(STDIN_FILENO, F_SETFL, oldf);
         
-        std::cout << "Streaming stopped." << std::endl;
+        fmt::print(fmt::fg(fmt::color::cyan) | fmt::emphasis::bold,
+                "> Streaming stopped.\n");
     } else {
-        std::cout << "No active connections to send subscribe message" << std::endl;
+        fmt::print(fmt::fg(fmt::color::red) | fmt::emphasis::bold,
+                "> No active connections to send subscribe message.\n");
         return -1;
     }
     
@@ -486,7 +479,6 @@ int websocket_endpoint::connect(string const &uri) {
         return -1;
     }
 
-    // Pass 'this' to the connection_metadata constructor
     connection_metadata::ptr metadata_ptr(new connection_metadata(new_id, con->get_handle(), uri, this));
     m_connection_list[new_id] = metadata_ptr;
 

@@ -10,6 +10,8 @@
 #include <functional>
 #include <regex>
 #include <set>
+#include <fmt/color.h>
+
 
 
 #include "latency/tracker.h"
@@ -32,18 +34,20 @@ vector<string> api::getSubscription(){
 
 void api::addSubscriptions(const string &index_name) {
     string subscription = "deribit_price_index." + index_name;
-    if (std::find(subscriptions.begin(), subscriptions.end(), subscription) == subscriptions.end()) {
+    if (find(subscriptions.begin(), subscriptions.end(), subscription) == subscriptions.end()) {
         subscriptions.push_back(subscription);
     }
 }
 
 
-void api::removeSubscriptions(const string &index_name) {
+bool api::removeSubscriptions(const string &index_name) {
     string subscription_to_remove = "deribit_price_index." + index_name;
-    auto it = std::find(subscriptions.begin(), subscriptions.end(), subscription_to_remove);
+    auto it = find(subscriptions.begin(), subscriptions.end(), subscription_to_remove);
     if (it != subscriptions.end()) {
         subscriptions.erase(it);
+        return 1;
     }
+    return 0;
 }
 
 bool api::is_valid_instrument(const string& instrument) {
@@ -155,7 +159,6 @@ string api::sell(const string &input) {
         return "";
     }
 
-    // Define order types with a vector to maintain order
     vector<string> order_types = {
         "limit", 
         "stop_limit", 
@@ -167,7 +170,6 @@ string api::sell(const string &input) {
         "trailing_stop"
     };
 
-    // Define order types and their corresponding time-in-force options
     map<string, vector<string>> order_type_tif = {
         {"limit", {"good_til_cancelled", "good_til_day", "fill_or_kill", "immediate_or_cancel"}},
         {"stop_limit", {"good_til_cancelled", "good_til_day", "fill_or_kill", "immediate_or_cancel"}},
@@ -299,7 +301,6 @@ string api::buy(const string &input) {
         return "";
     }
 
-    // Define order types with a vector to maintain order
     vector<string> order_types = {
         "limit", 
         "stop_limit", 
@@ -311,7 +312,6 @@ string api::buy(const string &input) {
         "trailing_stop"
     };
 
-    // Define order types and their corresponding time-in-force options
     map<string, vector<string>> order_type_tif = {
         {"limit", {"good_til_cancelled", "good_til_day", "fill_or_kill", "immediate_or_cancel"}},
         {"stop_limit", {"good_til_cancelled", "good_til_day", "fill_or_kill", "immediate_or_cancel"}},
@@ -323,7 +323,6 @@ string api::buy(const string &input) {
         {"trailing_stop", {"good_til_cancelled"}}
     };
 
-    // Print available order types
     utils::printcmd("\nAvailable order types:");
     for (size_t i = 0; i < order_types.size(); ++i) {
         utils::printcmd("\n" + to_string(i + 1) + ". " + order_types[i]);
@@ -346,7 +345,6 @@ string api::buy(const string &input) {
     // Get permitted time-in-force options for the selected order type
     const vector<string>& permitted_tif = order_type_tif[order_type];
     
-    // Print available time-in-force options
     utils::printcmd("\nAvailable time-in-force options for " + order_type + " order:");
     for (size_t i = 0; i < permitted_tif.size(); ++i) {
         utils::printcmd("\n" + to_string(i + 1) + ". " + permitted_tif[i]);
@@ -436,7 +434,6 @@ string api::modify(const string &input) {
 
     j["params"] = {{"order_id", ord_id}};
     
-    // Only add parameters that are not -1
     if (amount > 0) j["params"]["amount"] = amount;
     if (price > 0) j["params"]["price"] = price;
 
@@ -453,7 +450,10 @@ string api::cancel(const string &input) {
 
     iss >> id >> cmd >> ord_id;
     if (ord_id.empty()) { 
-        utils::printerr("Order ID cannot be blank. If you want to cancel all orders, use cancel_all instead.");
+        fmt::print(fmt::fg(fmt::color::red) | fmt::emphasis::bold,
+                "> Order ID cannot be blank.\n");
+        fmt::print(fmt::fg(fmt::color::yellow) | fmt::emphasis::bold,
+                "> If you want to cancel all orders, use cancel_all instead.\n");
         return "";
     }
 
@@ -542,17 +542,17 @@ string api::view_positions(const string &input) {
     istringstream is(input);
     int id;
     string cmd;
-    string currency; // Currency filter
-    string kind;     // Instrument kind filter
+    string currency;
+    string kind;    
     is >> id >> cmd >> currency >> kind;
     
-    // Inline validation for currency
     if (!currency.empty()) {
         static const set<string> valid_currencies = {
             "BTC", "ETH", "USDC", "USDT", "EURR"
         };
         if (valid_currencies.find(currency) == valid_currencies.end()) {
-            utils::printerr("Invalid currency format\n");
+            fmt::print(fmt::fg(fmt::color::red) | fmt::emphasis::bold,
+                "> Error: Invalid currency format\n");
             return "";
         }
     }
@@ -564,7 +564,8 @@ string api::view_positions(const string &input) {
             "future_combo", "option_combo"
         };
         if (valid_kinds.find(kind) == valid_kinds.end()) {
-            utils::printerr("Invalid instrument kind\n");
+            fmt::print(fmt::fg(fmt::color::red) | fmt::emphasis::bold,
+                "> Error: Invalid instrument kind\n");
             return "";
         }
     }
@@ -572,7 +573,6 @@ string api::view_positions(const string &input) {
     jsonrpc j;
     j["method"] = "private/get_positions";
     
-    // Add optional filters if provided
     if (!currency.empty()) {
         j["params"]["currency"] = currency;
     }
@@ -595,9 +595,9 @@ string api::get_orderbook(const string &input) {
 
     is >> id >> cmd >> instrument;
     
-    // Validate instrument is not empty
     if (instrument.empty()) {
-        utils::printerr("Instrument name is required\n");
+        fmt::print(fmt::fg(fmt::color::red) | fmt::emphasis::bold,
+           "> Error: Instrument name is required\n");
         return "";
     }
 
@@ -620,15 +620,8 @@ string api::subscribe(const string &input) {
     is >> id >> cmd >> index_name;
 
     addSubscriptions(index_name);
-    // Create the JSON-RPC request for subscription
-    // jsonrpc j;
-    // j["method"] = "private/subscribe";
-    // j["id"] = 4235;
-    // j["params"] = {
-    //     {"channels", subscriptions}
-    // };
-
-    // return j.dump();
+    fmt::print(fmt::fg(fmt::color::green) | fmt::emphasis::bold,
+           "> Subscribed to {}\n", index_name);
     return "";
 }
 
@@ -640,17 +633,13 @@ string api::unsubscribe(const string &input) {
 
     is >> id >> cmd >> index_name;
 
-    removeSubscriptions(index_name);
-    // Create the JSON-RPC request for subscription
-    // jsonrpc j;
-    // j["method"] = "private/unsubscribe";
-    // j["id"] = 3370;
-    // j["params"] = {
-    //     {"channels", subscriptions}
-    // };
-
-    // return j.dump();
-
+    if(!removeSubscriptions(index_name)){
+        fmt::print(fmt::fg(fmt::color::red) | fmt::emphasis::bold,
+           "> Error: Incorrect index name or not subscribed to the specified index.\n");
+    }else{
+        fmt::print(fmt::fg(fmt::color::yellow) | fmt::emphasis::bold,
+            "> Unsubscribed to {}\n", index_name);
+    }
     return "";
 }
 
@@ -659,14 +648,7 @@ string api::unsubscribe_all(const string &input) {
     int id;
     string cmd;
     subscriptions = {};
-    // Create the JSON-RPC request for subscription
-    // jsonrpc j;
-    // j["method"] = "private/subscribe_all";
-    // j["id"] = 154;
-    // j["params"] = {
-    //     {"channels", subscriptions}
-    // };
-
-    // return j.dump();
+    fmt::print(fmt::fg(fmt::color::yellow) | fmt::emphasis::bold,
+        "> Unsubscribed to all symbols\n");
     return "";
 }

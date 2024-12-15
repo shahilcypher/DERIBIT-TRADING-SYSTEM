@@ -9,26 +9,22 @@
 #include "websocket/websocket_client.h"
 #include "api/api.h"
 #include "utils/utils.h"
-#include "authentication/password.h"
 
 #include "latency/tracker.h"
 
 using namespace std;
 
 int main() {
-    // Flag to control the main loop
     bool done = false;
     char* input;
     
-    // Create a websocket endpoint instance
     websocket_endpoint endpoint;
 
     utils::printHeader();
               
-    // Main command processing loop
     while (!done) {
         // Readline provides a prompt and stores the history
-        input = readline(fmt::format(fg(fmt::color::green), "deribit> ").c_str());
+        input = readline(fmt::format(fg(fmt::color::blue), "deribit> ").c_str());
         if (!input) {
             break; // Exit on EOF (Ctrl+D)
         }
@@ -63,6 +59,7 @@ int main() {
                                "> Successfully created connection.\n");
                     fmt::print(fg(fmt::color::cyan), "> Connection ID: {}\n", id);
                     fmt::print(fg(fmt::color::yellow), "> Status: {}\n", endpoint.get_metadata(id)->get_status());
+                    fmt::print(fmt::fg(fmt::color::white), "> use \"show {}\" to check Status \n", id);
                 } else {
                     fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, 
                                "Error: Failed to create connection to {}\n", uri);
@@ -111,7 +108,8 @@ int main() {
             if (metadata) {
                 cout << *metadata << endl;
             } else {
-                cout << "> Unknown connection id " << id << endl;
+                fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, 
+                           "Unknown connection id {}\n", id);
             }
         }
         else if (command.substr(0, 5) == "close") {
@@ -156,6 +154,7 @@ int main() {
                            "> Successfully created connection to Deribit TESTNET.\n");
                 fmt::print(fg(fmt::color::cyan), "> Connection ID: {}\n", id);
                 fmt::print(fg(fmt::color::yellow), "> Status: {}\n", endpoint.get_metadata(id)->get_status());
+                fmt::print(fmt::fg(fmt::color::white), "> use \"show {}\" to check Status \n", id);
             } else {
                 fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, 
                            "> Failed to create connection to Deribit TESTNET.\n");
@@ -166,24 +165,28 @@ int main() {
             if(connections.size()){
                 endpoint.streamSubscriptions(connections);
             } else {
-                cout << "No Subscriptions. Use 'Deribit <id> subscribe <symbol>' to add a subscription." << endl;
+                fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, 
+                           "> No Subscriptions. Use 'Deribit <id> subscribe <symbol>' to add a subscription.\n");
             }
         }
         else if(command == "view_subscriptions"){
             vector<string> connections = api::getSubscription();
             if(!connections.empty()){
-                cout << "Current Subscriptions:" << endl;
+                fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, 
+                           "> Current Subscriptions:\n");
                 for(const auto& connection : connections){
                     // Find the position after the prefix
                     size_t prefix_pos = connection.find("deribit_price_index.");
                     if(prefix_pos != string::npos){
                         // Extract substring after the prefix
                         string index_name = connection.substr(prefix_pos + strlen("deribit_price_index."));
-                        cout << "- " << index_name << endl;
+                        fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, 
+                           " - {}\n", index_name);
                     }
                 }
             } else {
-                cout << "No Subscriptions. Use 'Deribit <id> subscribe <symbol>' to add a subscription." << endl;
+                fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, 
+                           "> No Subscriptions. Use 'Deribit <id> subscribe <symbol>' to add a subscription.\n");
             }
         }
         else if (command.substr(0, 7) == "Deribit") {
@@ -205,7 +208,7 @@ int main() {
             }
         }
         else {
-            cout << "Unrecognized command" << endl;
+            fmt::print(fg(fmt::color::yellow), "> Unrecognized command\n");
         }
     }
     return 0;

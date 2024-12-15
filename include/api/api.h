@@ -1,7 +1,6 @@
 #pragma once
 
 #include "json/json.hpp"
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -39,7 +38,7 @@ namespace api {
 
     void addSubscriptions(const string &index_name);
 
-    void removeSubscriptions(const string &index_name);
+    bool removeSubscriptions(const string &index_name);
     
     string process(const string &input);
 

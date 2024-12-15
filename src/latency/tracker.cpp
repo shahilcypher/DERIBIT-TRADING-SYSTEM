@@ -42,7 +42,6 @@ void LatencyTracker::stop_measurement(LatencyType type, const string& unique_id)
             );
             it->second.completed = true;
             
-            // Optional: Add to latency_metrics for comprehensive tracking
             latency_metrics[type].push_back(it->second);
             active_measurements.erase(it);
         }
@@ -52,10 +51,8 @@ void LatencyTracker::stop_measurement(LatencyType type, const string& unique_id)
 string LatencyTracker::generate_report() {
     lock_guard<mutex> lock(metrics_mutex);
     
-    // Get terminal width
     int terminal_width = utils::getTerminalWidth();
     
-    // Create a string stream for the report
     ostringstream report;
     
     // ANSI escape codes for colors
@@ -65,7 +62,6 @@ string LatencyTracker::generate_report() {
     const string metric_color = "\033[1;33m"; // Bold Yellow
     const string footer_color = "\033[1;34m"; // Bold Blue
 
-    // Create a header line that spans the terminal width
     string header = "Latency Benchmarking Report";
     int padding_length = (terminal_width - header.length()) / 2;
     string padding(padding_length, '=');
@@ -102,7 +98,6 @@ string LatencyTracker::generate_report() {
             continue;
         }
 
-        // Sort durations for percentile calculations
         sort(durations.begin(), durations.end());
 
         auto total_measurements = durations.size();
@@ -115,7 +110,6 @@ string LatencyTracker::generate_report() {
         auto min_duration = durations.front();
         auto max_duration = durations.back();
 
-        // Create a formatted section for this latency type
         report << section_color << left << setw(type_col_width) << type_names[type] 
                << reset_color
                << right 
@@ -132,14 +126,12 @@ string LatencyTracker::generate_report() {
         report << "  " << metric_color << "Min:  " << reset_color << setw(8) << min_duration.count() / 1000.0 << " µs"
                << "  " << metric_color << "Max:  " << reset_color << setw(8) << max_duration.count() / 1000.0 << " µs\n";
         
-        // Percentiles on a new line
         report << string(type_col_width, ' ')
                << "  " << metric_color << "50th: " << reset_color << setw(8) << percentile_50.count() / 1000.0 << " µs"
                << "  " << metric_color << "90th: " << reset_color << setw(8) << percentile_90.count() / 1000.0 << " µs"
                << "  " << metric_color << "99th: " << reset_color << setw(8) << percentile_99.count() / 1000.0 << " µs\n\n";
     }
 
-    // Add a footer line
     report << footer_color << string(terminal_width, '=') << reset_color << "\n";
 
     return report.str();
@@ -156,17 +148,13 @@ void LatencyTracker::reset() {
     latency_metrics.clear();
     active_measurements.clear();
 
-    // Get terminal width
     int terminal_width = utils::getTerminalWidth();
 
-    // Define the message
     const string message = "Latency metrics have been reset.";
     
-    // Calculate padding for centering the message
     int padding_length = (terminal_width - message.length()) / 2;
     string padding(padding_length, ' ');
 
-    // Print the message to the terminal
     cout << padding << message << endl;
 }
 

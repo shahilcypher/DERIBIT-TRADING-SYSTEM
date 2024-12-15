@@ -1,26 +1,18 @@
 #ifndef WEBSOCKET_CLIENT_H
 #define WEBSOCKET_CLIENT_H
 
-#include <cstdlib>
-#include <iostream>
 #include <map>
 #include <string>
-#include <sstream>
 #include <mutex>
 #include <condition_variable>
 #include <vector>
-#include <functional>
 #include <thread>
-#include <atomic>
 
 #include <websocketpp/config/asio_client.hpp> 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/ssl/context.hpp> 
 #include <websocketpp/client.hpp> 
-
-#include <websocketpp/common/thread.hpp>
-#include <websocketpp/common/memory.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -33,7 +25,6 @@ extern bool isStreaming;
 typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
 typedef shared_ptr<boost::asio::ssl::context> context_ptr;
 
-// Forward declaration of websocket_endpoint class
 class websocket_endpoint;
 
 class connection_metadata {
@@ -92,7 +83,7 @@ public:
     connection_metadata::ptr get_metadata(int id) const;
     void close(int id, websocketpp::close::status::value code, string reason);
     int send(int id, string message);
-    int streamSubscriptions(const std::vector<std::string>& connections);
+    int streamSubscriptions(const vector<string>& connections);
 };
 
 #endif // WEBSOCKET_CLIENT_H

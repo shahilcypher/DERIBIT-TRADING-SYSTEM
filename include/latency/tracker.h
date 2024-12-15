@@ -15,7 +15,6 @@ using namespace std;
 
 class LatencyTracker {
 public:
-    // Enum to categorize different latency types
     enum LatencyType {
         ORDER_PLACEMENT,
         MARKET_DATA_PROCESSING,
@@ -23,7 +22,6 @@ public:
         TRADING_LOOP_END_TO_END
     };
 
-    // Nested struct to store detailed latency information
     struct LatencyMetric {
         chrono::high_resolution_clock::time_point start_time;
         chrono::high_resolution_clock::time_point end_time;
@@ -31,19 +29,14 @@ public:
         bool completed{false};
     };
 
-    // Start measuring latency for a specific type
     void start_measurement(LatencyType type, const string& unique_id = "");
 
-    // Stop measuring latency and record the result
     void stop_measurement(LatencyType type, const string& unique_id = "");
 
-    // Generate a comprehensive latency report
     string generate_report();
 
-    // Export raw metrics for external analysis
     map<LatencyType, vector<LatencyMetric>> get_raw_metrics();
 
-    // Clear all collected metrics
     void reset();
 
 private:

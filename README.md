@@ -2,10 +2,9 @@
 
 ## Overview
 
-![image](https://github.com/user-attachments/assets/4cc060ac-5168-40a2-a2a0-9639cc7855fb)
-
-
 Deribit Trading System is a high-performance order execution and management system that operates through a command-line interface. It uses a WebSocket client to connect to the Deribit TESTNET and manage trading portfolios with advanced functionality.
+
+![image](https://github.com/user-attachments/assets/4cc060ac-5168-40a2-a2a0-9639cc7855fb)
 
 ## Features
 
@@ -42,11 +41,18 @@ To quickly configure your system and set up the project, execute the appropriate
 
 - NOTE: Ensure you are in the root directory of the repository before running the script.
 
-##### macOS/Linux:
+##### macOS:
 Run the following commands to execute the setup script:
 ```sh
-chmod +x ./scripts/setup_mac.sh  # Or setup_linux.sh
+chmod +x ./scripts/setup_mac.sh
 ./scripts/setup_mac.sh
+```
+
+##### Linux:
+Run the following commands to execute the setup script:
+```sh
+chmod +x ./scripts/setup_linux.sh
+./scripts/setup_linux.sh
 ```
 
 #### Windows
@@ -148,11 +154,14 @@ This is a trading system for educational and testing purposes. Always use cautio
 - `send <id> msg`: Send message to specific connection
 - `show_messages <id>`: View message exchanges
 - `send <id> <message>`: Sends the message to the specified connection
+- `view_subscriptions`: Displays the list of subscribed symbols to stream continuous orderbook updates
+- `view_stream`: Displays the stream continuous orderbook updates subscribed symbols
 - `latency_report` : Generates a latency report of the current session
 - `reset_report` : Delete's the data of the latency report of the current session
 
 #### Deribit API Commands
 
+#### Connection and Authentication
 1. Connect to Testnet:
 Creates a new connection to the Deribit testnet website
 ```sh
@@ -169,7 +178,7 @@ Sends the authorization message to retrieve the access token; optional: use -s t
 Deribit <id> authorize <connection_id> <client_id> <client_secret> [-s]
 ```
 
-#### Trading Commands
+#### Order Management
 
 1. Buy Order:
  Places a buy order for the specified instrument
@@ -183,19 +192,13 @@ Deribit <id> buy <instrument> <transaction_name>
 Deribit <id> sell <instrument> <transaction_name>
 ```
 
-3. Get Open Orders:
- Fetches all open orders with optional filters
-```bash
-Deribit <id> get_open_orders [<currency>] [<instrument>] [<label>]
-```
-
-4. Modify Order:
+3. Modify Order:
  Modifies the price or amount of an active order
 ```bash
 Deribit <id> modify <order_id>
 ```
 
-5. Cancel Order:
+4. Cancel Order:
  Cancels the specified order
 ```bash
 Deribit <id> cancel <order_id>
@@ -204,17 +207,39 @@ Cancell all orders
 ```sh
 Deribit <id> cancel_all
 ```
+#### Information Retrieval
 
-6. View Positions:
+1. Get Open Orders:
+ Fetches all open orders with optional filters
+```bash
+Deribit <id> get_open_orders [<currency>] [<instrument>] [<label>]
+```
+2. View Positions:
  Fetches all your current open positions; optional: use options to be specific
 ```bash
 Deribit <id> positions [currency] [kind]
 ```
-
-7. Get OrderBook:
+3. Get OrderBook:
 Fetches all current buy and sell orders for the specified instrument; optional: specify depth of search
 ```bash
 Deribit <id> orderbook <instrument> [<depth>]
+```
+
+#### Symbol Subscription
+1. Subscribe to a symbol:
+Subscribes to that symbol to stream continuous orderbook updates
+```sh
+Deribit <id> subscribe [symbol]
+```
+2. Unsubscribe to a symbol:
+Unsubscribes to that symbol to stream continuous orderbook updates
+```sh
+Deribit <id> unsubscribe [symbol]
+```
+3. Unsubscribe to all symbol:
+Unsubscribes to all symbols that have been subscribed to stream real time data
+```sh
+Deribit <id> unsubscribe_all
 ```
 
 ## Supported Order Types
