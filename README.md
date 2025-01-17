@@ -4,7 +4,7 @@
 
 Deribit Trading System is a high-performance order execution and management system that operates through a command-line interface. It uses a WebSocket client to connect to the Deribit TESTNET and manage trading portfolios with advanced functionality.
 
-![image](https://github.com/user-attachments/assets/4cc060ac-5168-40a2-a2a0-9639cc7855fb)
+[![image](https://github.com/user-attachments/assets/4cc060ac-5168-40a2-a2a0-9639cc7855fb)](https://youtu.be/r6a5EGWrwl8?si=QQchaGp8tsG5MC1d)
 
 ## Features
 
@@ -37,9 +37,9 @@ Deribit Trading System is a high-performance order execution and management syst
 - Git
 
 ### Fast setup
-To quickly configure your system and set up the project, execute the appropriate setup script for your operating system as detailed below.
+To quickly configure your system and set up the project, please go ahead and execute the appropriate setup script for your operating system as detailed below.
 
-- NOTE: Ensure you are in the root directory of the repository before running the script.
+- NOTE: Please make sure you are in the repository's root directory before running the script.
 
 ##### macOS:
 Run the following commands to execute the setup script:
@@ -303,7 +303,7 @@ Deribit <id> unsubscribe_all
 
 ## Development
 
-![image](https://github.com/user-attachments/assets/a5d8aee6-9b40-4b07-ac2f-852b595fe12e)
+[![image](https://github.com/user-attachments/assets/a5d8aee6-9b40-4b07-ac2f-852b595fe12e)](https://youtu.be/c6sYTvpzR7s?si=e7Lfe-rqktacIdq_)
 
 1. you are free to develop more feature on this, just refer the new [DERIBIT API DOCS](https://docs.deribit.com/)
 2. Test the API Call on [Deribit API Console](https://test.deribit.com/api_console)
