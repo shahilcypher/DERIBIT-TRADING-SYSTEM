@@ -1,0 +1,14 @@
+# Target labels
+ fmt-populate
+# Source files and their labels
+/root/deribit-trading-system/build/_deps/fmt-subbuild/CMakeFiles/fmt-populate
+/root/deribit-trading-system/build/_deps/fmt-subbuild/CMakeFiles/fmt-populate.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/CMakeFiles/fmt-populate-complete.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test.rule
+/root/deribit-trading-system/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update.rule
