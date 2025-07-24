@@ -104,8 +104,8 @@ sudo apt install cmake gcc libboost-all-dev libssl-dev git libreadline-dev
 
 1. Clone the Repository:
 ```bash
-git clone https://github.com/Venkatesan-M/deribit-trading-system.git
-cd deribit-trading-system
+git clone https://github.com/shahil-cypher/DERIBIT-TRADING-SYSTEM.git
+cd DERIBIT-TRADING-SYSTEM
 ```
 
 2. Create Build Directory:
