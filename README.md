@@ -317,11 +317,7 @@ Contributions are welcome! Please follow these steps:
 3. Make your changes
 4. Submit a pull request
 
-## License
 
-MIT License
-
-Copyright (c) 2025 Venkatesan M
 =======
 # DERIBIT-TRADING-SYSTEM
 Developed a C++-based trading system for real-time interaction with the Deribit crypto exchange via REST APIs.Developed a C++-based trading system for real-time interaction with the Deribit crypto exchange via REST APIs.
